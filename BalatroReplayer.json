@@ -1,0 +1,15 @@
+{
+  "id": "BalatroReplayer",
+  "name": "Balatro Replayer",
+  "author": [
+    "DoubleAAdev"
+  ],
+  "description": "Replay a Multiplayer game from its Lovely log so Balatro Observer's Action Recorder records it again.",
+  "prefix": "brpl",
+  "main_file": "main.lua",
+  "version": "1.0.0",
+  "dependencies": [
+    "Steamodded (>=1.0.0~BETA)",
+    "BalatroObserver"
+  ]
+}

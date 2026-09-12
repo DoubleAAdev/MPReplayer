@@ -1,0 +1,6 @@
+# Python caches from the Lua test runner
+__pycache__/
+*.pyc
+
+# Replay status and action lists, if Balatro's save folder is ever pointed here
+/balatro_replayer/
