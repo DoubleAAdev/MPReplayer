@@ -97,7 +97,19 @@ assert(not ok and err:find('Install Multiplayer 0.5.5'))
 SMODS.Mods.Multiplayer.version = '0.5.5'
 assert(session.phase == 'idle' and MP.LOBBY.config == original_config and Client.send == original_send, 'a refused start changes nothing')
 
--- Starting emulates the lobby the log was played in.
+-- A log played with other mods is named before anything starts.
+manifest.mod_hash = 'preview=false;unlocked=true;encryptID=1;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
+MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'
+ok, err = pcall(session.start)
+assert(not ok and err:find('^Mods differ from the log: the log had Handy%-2%.0%.5, Steamodded%-1%.0%.0~BETA%-1620a; this game has Handy%-2%.0%.6, Steamodded%-26%.829%.0, takanatro%-1%.0%.0%.')
+    and err:find('Press Start Replay again'), err)
+assert(session.phase == 'idle' and Client.send == original_send, 'nothing starts on the first press')
+-- The status wraps onto the config tab's lines without losing a word.
+session.status(err)
+assert(#session.line1 <= 60 and #session.line2 <= 60 and #session.line3 <= 60 and session.line4 ~= '')
+assert(session.line1 .. ' ' .. session.line2 .. ' ' .. session.line3 .. ' ' .. session.line4 == err)
+
+-- Pressing Start Replay again starts it, emulating the lobby the log was played in.
 G.OVERLAY_MENU = {}
 session.start()
 assert(session.phase == 'joining' and not G.OVERLAY_MENU)
@@ -114,6 +126,9 @@ Client.send({action = 'username'})
 assert(#sends == 1 and sends[1].action == 'username', 'game messages are dropped, harmless ones pass')
 MP.STATS.record_match(true)
 assert(matches == 0, 'a replayed win is not a recorded match')
+-- The same mods pass on the first press, whatever Multiplayer's flags and
+-- the replay's own mods say; every later start below relies on it.
+MP.MOD_STRING = 'preview=true;unlocked=false;encryptID=9;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
 assert(#channel.items == 0, 'the run does not start before Multiplayer has entered the lobby')
 
 -- Multiplayer re-enters the menu on joining; the run starts once it settles.

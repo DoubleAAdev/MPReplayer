@@ -22,12 +22,15 @@ local mod = {id = 'BalatroReplayer'}
 local session = dofile('replayer/init.lua')(mod, JSON)
 assert(BalatroReplayer == session and session.phase == 'idle')
 
--- The mod's config tab: a status row and four buttons.
+-- The mod's config tab: four status lines and four buttons.
 local tab = mod.config_tab()
-assert(tab.n == G.UIT.ROOT and #tab.nodes == 2)
-assert(tab.nodes[1].nodes[1].config.ref_table == session and tab.nodes[1].nodes[1].config.ref_value == 'text')
+assert(tab.n == G.UIT.ROOT and #tab.nodes == 5)
+for i, line in ipairs({'line1', 'line2', 'line3', 'line4'}) do
+    assert(tab.nodes[i].nodes[1].config.ref_table == session and tab.nodes[i].nodes[1].config.ref_value == line)
+end
+assert(session.line1:find('Load Log'), 'the first status is already on the lines')
 local buttons = {}
-for _, node in ipairs(tab.nodes[2].nodes) do buttons[#buttons + 1] = node.config.button end
+for _, node in ipairs(tab.nodes[5].nodes) do buttons[#buttons + 1] = node.config.button end
 assert(table.concat(buttons, ',') == 'brpl_load,brpl_next,brpl_start,brpl_stop')
 for _, name in ipairs(buttons) do assert(type(G.FUNCS[name]) == 'function') end
 
@@ -44,7 +47,7 @@ love.filedropped(dropped)
 assert(session.runs ~= loaded and session.runs[1].actions == 2, session.text)
 -- The filtered actions are written out for the player to read.
 assert(writes['balatro_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['balatro_replayer/actions.txt'])
-assert(session.text:find('2 actions') and session.text:find('actions.txt'), session.text)
+assert(session.text:find('2 actions') and session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
 local other = {getFilename = function() return 'notes.txt' end}
 love.filedropped(other)
 assert(session.runs[1].actions == 2, 'other files are not logs')

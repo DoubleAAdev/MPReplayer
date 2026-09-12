@@ -78,8 +78,10 @@ return function(mod, JSON)
     local previous_tab = mod.config_tab
     mod.config_tab = function()
         local tab = previous_tab and previous_tab() or {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.2}, nodes = {}}
-        tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
-            {n = G.UIT.T, config = {ref_table = session, ref_value = 'text', scale = 0.26, colour = G.C.WHITE, maxw = 11}}}}
+        for _, line in ipairs({'line1', 'line2', 'line3', 'line4'}) do
+            tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.02}, nodes = {
+                {n = G.UIT.T, config = {ref_table = session, ref_value = line, scale = 0.26, colour = G.C.WHITE}}}}
+        end
         local buttons = {}
         for _, item in ipairs({{'Load Log', 'brpl_load'}, {'Next Run', 'brpl_next'}, {'Start Replay', 'brpl_start'}, {'Stop Replay', 'brpl_stop'}}) do
             buttons[#buttons + 1] = {n = G.UIT.C, config = {align = 'cm', button = item[2], colour = G.C.BLUE, padding = 0.12, r = 0.1, hover = true, shadow = true},

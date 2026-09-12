@@ -128,6 +128,11 @@ return function(decode)
     function M.parse(text)
         assert(type(text) == 'string' and #text <= 16 * 1024 * 1024, 'Log exceeds 16 MB')
         local runs, run, lobby, pending, paying, number = {}, nil, nil, nil, nil, 0
+        -- Replays before Balatro Replayer wrote their own run into the Lovely
+        -- log, so those logs hold games nobody played. Their status lines say
+        -- which: "Replay starting run <seed>" just before the manifest, and
+        -- "Replay running" after it.
+        local replaying
         for line in (text .. '\n'):gmatch('(.-)\r?\n') do
             number = number + 1
             -- The filter: an MP_RLOG line that is not a Client line. Matching the
@@ -139,6 +144,8 @@ return function(decode)
                 if payload:match('^MANIFEST ') then
                     run = {manifest = parse_manifest(payload:sub(10)), manifest_text = payload:sub(10), entries = {}, actions = 0, seq = 0,
                         complete = false, lobby = lobby, line = number}
+                    run.replayed = replaying ~= nil and replaying == run.manifest.seed or nil
+                    replaying = nil
                     runs[#runs + 1] = run
                     pending, paying = nil, nil
                 elseif payload:match('^END ') then
@@ -168,7 +175,12 @@ return function(decode)
                 end
             else
                 local human = line:match(':: MULTIPLAYER :: Client sent message: action:(.*)$')
-                if human then
+                local started = not human and line:match(':: BalatroObserver :: Replay starting run (%S+)')
+                if started then
+                    replaying = started
+                elseif run and not human and line:find(':: BalatroObserver :: Replay running', 1, true) then
+                    run.replayed = true
+                elseif human then
                     -- ease_dollars traces every money change with the same
                     -- prefix. Those belong to the last action until the next
                     -- one; the mirrored line is the first other line after it.

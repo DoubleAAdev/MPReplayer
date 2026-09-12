@@ -153,6 +153,16 @@ assert(not pcall(log.parse, head .. 'MP_RLOG: 1 set_ante_key 0.5'), 'a run of no
 local slow = 'INFO - [G] LONG DT @ 12: 0.07' .. NL
 local timed = log.parse(slow .. head .. 'MP_RLOG: 1 reroll' .. NL .. slow .. P .. 'MP_RLOG: 2 reroll')
 assert(#timed == 1 and timed[1].actions == 2)
+-- A log an old replay wrote is told apart from a game: by the status line
+-- that started it, for that seed only, or by the one saying it was running.
+local debug_line = 'INFO - [G] 2026-09-12 13:27:24 :: DEBUG :: BalatroObserver :: '
+assert(log.parse(debug_line .. 'Replay starting run TESTSEED' .. NL .. head .. 'MP_RLOG: 1 reroll')[1].replayed == true)
+assert(log.parse(head .. 'MP_RLOG: 1 reroll' .. NL .. debug_line .. 'Replay running - 0/1 inputs')[1].replayed == true)
+assert(log.parse(debug_line .. 'Replay starting run OTHERSEED' .. NL .. head .. 'MP_RLOG: 1 reroll')[1].replayed == nil,
+    'a replay that never got its run going does not mark the game played after it')
+assert(log.parse(debug_line .. 'Replayer: run 1/1 - 5 inputs, seed TESTSEED' .. NL .. head .. 'MP_RLOG: 1 reroll')[1].replayed == nil,
+    'loading a log is not replaying it')
+assert(log.parse(head .. 'MP_RLOG: 1 reroll')[1].replayed == nil)
 -- A player named "Client" still has a manifest.
 assert(log.parse(P .. 'MP_RLOG: MANIFEST {"seed":"TESTSEED","player":"Client"}' .. NL .. P .. 'MP_RLOG: 1 reroll')[1].actions == 1)
 
@@ -161,7 +171,12 @@ local real = io.open('C:/Users/amite/AppData/Roaming/Balatro/Mods/lovely/log/lov
 if real then
     local text = real:read('*a')
     real:close()
-    package.loaded.json = package.loaded.json or dofile('C:/Users/amite/AppData/Roaming/Balatro/Mods/smods/libs/json/json.lua')
+    -- Steamodded's folder has been named both ways.
+    for _, folder in ipairs({'Steamodded', 'smods'}) do
+        local path = 'C:/Users/amite/AppData/Roaming/Balatro/Mods/' .. folder .. '/libs/json/json.lua'
+        local found = io.open(path, 'rb')
+        if found then found:close(); package.loaded.json = package.loaded.json or dofile(path) end
+    end
     local parsed = dofile('replayer/log.lua')(package.loaded.json.decode).parse(text)
     -- 641 MP_RLOG actions, 24 of them set_ante_key.
     assert(#parsed == 1 and parsed[1].actions == 617 and parsed[1].complete and parsed[1].result == 'win')

@@ -20,7 +20,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 
 ## Use
 
-1. Open **Mods > Balatro Replayer > Config**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time; **Next Run** cycles through them.
+1. Open **Mods > Balatro Replayer > Config**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time; **Next Run** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
 3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the config tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
 4. When the status says the replay is complete, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status.
@@ -57,7 +57,8 @@ A replay writes nothing into the Lovely log. Its progress is shown only in the c
 
 ## Limits
 
-- The Multiplayer version, ruleset, game mode, deck and Cocktail deck pool must match the log. Other installed mods should match the original game; a different mod set changes card pools.
+- The Multiplayer version, ruleset, game mode, deck and Cocktail deck pool must match the log.
+- The other installed mods should be the ones the game was played with, at the same versions. A different mod set deals a different game from the same seed - an updated Steamodded rolls a different boss blind, for one. **Start Replay** compares the mods the log lists with the installed ones and names every difference; pressing it again replays anyway.
 - Challenge runs are not replayed.
 - Multiplayer logs "Buy" and "Buy & Use" the same way. The replay decides from the evidence, in this order: money moving right after the purchase means the card was used at once (a Hermit or Temperance); a consumable the shop cannot use (it needs selected cards) was bought only; no free consumable slot means Buy & Use; otherwise the first later use or sale of the slot the card would occupy tells, since every card the game adds later lands behind it and every removal in front of it is logged. Without any later reference it is a plain buy. A purchase the log shows no payment for is replayed as the refused click it was.
 - Multiplayer does not log drag reorders of the consumable rack. A run that reordered consumables by hand stops at the first use or sale that names a different card.

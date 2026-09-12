@@ -40,8 +40,27 @@ return function(log, driver, JSON, deps)
         end)
     end
 
+    -- The config tab has room for four lines of about this many characters;
+    -- the last line takes whatever is left.
+    local WIDTH = 60
+    local function wrap(text)
+        local lines, line = {}, ''
+        for word in tostring(text):gmatch('%S+') do
+            if line ~= '' and #line + 1 + #word > WIDTH and #lines < 3 then
+                lines[#lines + 1] = line
+                line = word
+            else
+                line = line == '' and word or (line .. ' ' .. word)
+            end
+        end
+        lines[#lines + 1] = line
+        S.line1, S.line2, S.line3, S.line4 = lines[1] or '', lines[2] or '', lines[3] or '', lines[4] or ''
+    end
+    wrap(S.text)
+
     function S.status(text)
         S.text = text
+        wrap(text)
         write_status()
     end
 
@@ -133,7 +152,7 @@ return function(log, driver, JSON, deps)
             love.filesystem.write(directory .. '/actions.txt', log.table(run))
         end)
         S.status('Replayer: run ' .. S.index .. '/' .. #S.runs .. ' - ' .. run.actions .. ' actions, seed ' .. run.manifest.seed ..
-            ' - listed in balatro_replayer/actions.txt')
+            (run.replayed and ' - WRITTEN BY AN OLD REPLAY, NOT A GAME YOU PLAYED' or '') .. ' - listed in balatro_replayer/actions.txt')
     end
 
     function S.load(text)
@@ -185,12 +204,49 @@ return function(log, driver, JSON, deps)
     end
     S.classify = classify
 
+    -- Multiplayer writes every enabled mod and its version into the manifest,
+    -- in the same form it keeps in MP.MOD_STRING. The replay's own mods are
+    -- left out: they change no card.
+    local function mods_of(text)
+        local set = {}
+        for item in tostring(text):gmatch('[^;]+') do
+            if not item:find('=', 1, true) and not item:match('^BalatroObserver%-') and not item:match('^BalatroReplayer%-') then
+                set[item] = true
+            end
+        end
+        return set
+    end
+
+    -- Another mod set deals another game from the same seed: an updated
+    -- Steamodded, for one, rolls a different boss blind. Said before the run
+    -- starts rather than found out at the first thing that differs.
+    local function mod_difference(m)
+        if type(m.mod_hash) ~= 'string' or type(MP.MOD_STRING) ~= 'string' or MP.MOD_STRING == '' then return nil end
+        local logged, installed = mods_of(m.mod_hash), mods_of(MP.MOD_STRING)
+        local missing, extra = {}, {}
+        for item in pairs(logged) do if not installed[item] then missing[#missing + 1] = item end end
+        for item in pairs(installed) do if not logged[item] then extra[#extra + 1] = item end end
+        if #missing == 0 and #extra == 0 then return nil end
+        table.sort(missing)
+        table.sort(extra)
+        local parts = {}
+        if #missing > 0 then parts[#parts + 1] = 'the log had ' .. table.concat(missing, ', ') end
+        if #extra > 0 then parts[#parts + 1] = 'this game has ' .. table.concat(extra, ', ') end
+        return 'Mods differ from the log: ' .. table.concat(parts, '; ')
+    end
+
     function S.start()
         assert(S.runs, 'Load a log first')
         assert(S.phase == 'idle', 'A replay is already running')
         local run = S.runs[S.index]
         local m = run.manifest
         local key, deck_name = validate(run)
+        local differs = mod_difference(m)
+        if differs and S.confirmed ~= run then
+            S.confirmed = run
+            error(differs .. '. The replay may stop early. Press Start Replay again to replay anyway', 0)
+        end
+        S.confirmed = nil
         classify(run.entries)
         saved = {send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
             modifiers = MP.MODIFIERS, sp = {}, lobby = {}}
