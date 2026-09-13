@@ -5,8 +5,10 @@ local now = 100
 local writes, lovely = {}, {}
 love = {timer = {getTime = function() return now end},
     filesystem = {createDirectory = function() return true end, write = function(p, t) writes[p] = t; return true end}}
-function sendDebugMessage(text) lovely[#lovely + 1] = text end
-function sendTraceMessage(text) lovely[#lovely + 1] = text end
+function sendMessageToConsole(level, logger, message) lovely[#lovely + 1] = logger .. ': ' .. message end
+function sendDebugMessage(text, logger) sendMessageToConsole('DEBUG', logger or 'DefaultLogger', text) end
+function sendTraceMessage(text, logger) sendMessageToConsole('TRACE', logger or 'DefaultLogger', text) end
+local console = sendMessageToConsole
 local channel = {items = {}}
 function channel:push(v) self.items[#self.items + 1] = v end
 function channel:pop() return table.remove(self.items, 1) end
@@ -117,6 +119,14 @@ assert(config.starting_lives == 6 and config.hide_score_until_played == true and
 assert(config.timer == false, 'the round timer is off: a replay runs at animation speed')
 assert(config.back == 'Red Deck' and config.stake == 1 and config.modifier_layers == 'classic,ranked' and MP.LOBBY.deck.back == 'Red Deck')
 assert(MP.MODIFIERS[1] == 'classic' and MP.MODIFIERS[2] == 'ranked' and MP.SP.practice == false and MP.GHOST.cleared)
+-- Nothing Multiplayer logs reaches the Lovely log while the replay runs;
+-- other mods' lines still do.
+sendTraceMessage('MP_RLOG: MANIFEST {"seed":"TESTSEED"}', 'MULTIPLAYER')
+sendDebugMessage('Resetting game states', 'MULTIPLAYER')
+assert(#lovely == 0, 'Multiplayer logged during a replay: ' .. tostring(lovely[1]))
+sendDebugMessage('hello', 'OtherMod')
+assert(#lovely == 1 and lovely[1] == 'OtherMod: hello')
+lovely = {}
 Client.send({action = 'setLocation', location = 'loc_shop'})
 Client.send({action = 'username'})
 assert(#sends == 1 and sends[1].action == 'username', 'game messages are dropped, harmless ones pass')
@@ -148,6 +158,7 @@ session.on_run_started()
 assert(session.phase == 'failed' and session.text:find('seed OTHER'))
 session.on_main_menu()
 assert(session.phase == 'idle' and MP.LOBBY.code == nil and Client.send == original_send and MP.LOBBY.config == original_config and MP.RLOG.record ~= session.record)
+assert(sendMessageToConsole == console, 'Multiplayer logs again once the replay is over')
 
 local function begin()
     G.STAGE = 1

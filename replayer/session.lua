@@ -13,10 +13,11 @@
 -- lobby instead of using practice mode. Nothing reaches the server: Client
 -- messages are dropped for the whole session.
 --
--- A replay writes nothing into the Lovely log. Progress is shown in the
--- config tab and in balatro_replayer/status.json, and the actions it performs
--- are kept out of Multiplayer's own replay log, so a replay never leaves
--- behind a log that reads like another game.
+-- A replay writes nothing into the Lovely log. From Start Replay until the
+-- game is back at the main menu, every line Multiplayer would log is dropped
+-- as well - the run's manifest, its actions, the money, the messages handed
+-- back to it - so a replay never leaves behind a log that reads like another
+-- game. Progress is shown in the config tab and balatro_replayer/status.json.
 return function(log, driver, JSON, deps)
     local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1}
     local directory = 'balatro_replayer'
@@ -105,8 +106,7 @@ return function(log, driver, JSON, deps)
     -- Installed over MP.RLOG.record for the session. The game reports every
     -- action it performs here, and it must be the log's next action. The
     -- report is not passed on to Multiplayer's replay log while the replay
-    -- runs; once it stops, the player's own moves are logged as usual.
-    -- set_ante_key is the game's bookkeeping, not an action.
+    -- runs. set_ante_key is the game's bookkeeping, not an action.
     function S.record(op, args, human)
         local original = saved and saved.record
         if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure then
@@ -286,6 +286,14 @@ return function(log, driver, JSON, deps)
         end
         MP.RLOG.record = S.record
         if MP.STATS then MP.STATS.record_match = function() end end
+        -- Steamodded sends every log line through this one function, and
+        -- Multiplayer names itself as the logger on all of its lines.
+        saved.console = sendMessageToConsole
+        if saved.console then
+            sendMessageToConsole = function(level, logger, message)
+                if logger ~= 'MULTIPLAYER' then return saved.console(level, logger, message) end
+            end
+        end
         session = {run = run, entries = run.entries, cursor = 1, done = 0, key = key, began = clock(), tick = 0}
         session.code = m.lobby_code or 'REPLAY'
         -- Setting the code is what joining a lobby does; Multiplayer notices
@@ -306,6 +314,7 @@ return function(log, driver, JSON, deps)
         MP.MODIFIERS = saved.modifiers
         if MP.SP then for k, v in pairs(saved.sp) do MP.SP[k] = v end end
         if MP.reset_game_states then MP.reset_game_states() end
+        if saved.console then sendMessageToConsole = saved.console end
         saved = nil
     end
 

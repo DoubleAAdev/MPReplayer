@@ -1,3 +1,7 @@
+# 1.3.0
+
+- Keep a replay out of the Lovely log entirely. From Start Replay until the game is back at the main menu, every line Multiplayer logs is dropped: the manifest it wrote at the start of each replayed run, the money, the opponent's messages handed back to it, its status lines. A replay's log used to open with a manifest like a real game's, which is how an old replay of a game came to look like a second game. Other mods' lines are unaffected.
+
 # 1.2.0
 
 - Drop the Balatro Observer requirement. The mod no longer depends on Balatro Observer and a replay starts without Action Recorder. When Action Recorder is installed and recording, the replay still stops if the recording stops, and the closing status still names the recording.

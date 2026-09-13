@@ -52,7 +52,7 @@ The replay stops at the action it could not execute and says why, leaving the ru
 
 ## The Lovely log
 
-A replay writes nothing into the Lovely log. Its progress is shown only in the config tab and `status.json`, and the actions it executes are kept out of Multiplayer's own replay log, so a replay never leaves behind a log that reads like another game.
+A replay writes nothing into the Lovely log. From **Start Replay** until you are back at the main menu, every line Multiplayer would log is dropped too - the run's manifest, its actions, the money and the opponent's messages - so a replay never leaves behind a log that reads like another game. Lines from other mods are logged as usual. Progress is shown only in the config tab and `status.json`.
 
 ## Limits
 
