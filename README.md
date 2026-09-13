@@ -1,13 +1,12 @@
 # Balatro Replayer
 
-A Steamodded mod that replays a Multiplayer game from its Lovely log so [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver)'s Action Recorder can record every move again with card identities.
+A Steamodded mod that replays a Multiplayer game from its Lovely log, action by action. With [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver) installed, its Action Recorder records the replay with card identities.
 
 It was part of Balatro Observer until version 1.10.0 and moved here unchanged.
 
 ## Requirements
 
 - [Steamodded](https://github.com/Steamodded/smods) 1.0.0 beta or newer
-- [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver), whose Action Recorder does the recording
 - The Multiplayer mod, at the version the log was played with (the log's manifest names it)
 
 ## Install
@@ -23,7 +22,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 1. Open **Mods > Balatro Replayer > Config**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time; **Next Run** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
 3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the config tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
-4. When the status says the replay is complete, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status.
+4. When the status says the replay is complete, and Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
 5. Return to the main menu. The lobby copy is dismantled and Multiplayer is left as it was.
 
 **Stop Replay** ends playback and returns to the menu. Pausing or opening a menu only pauses the replay.

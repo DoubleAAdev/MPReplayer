@@ -79,7 +79,7 @@ assert(session.runs and session.runs[1].actions == 6 and session.text:find('6 ac
 local listed = writes['balatro_replayer/actions.txt']
 assert(listed:find('^MANIFEST {}\n') and listed:find('OP_NUM: 3 || OP: play') and not listed:find('set_ante_key'), listed)
 
--- Starting is refused outside the main menu, inside a lobby, or without the recorder.
+-- Starting is refused outside the main menu or inside a lobby.
 G.STAGE = 2
 assert(not pcall(session.start))
 G.STAGE = 1
@@ -87,10 +87,6 @@ MP.LOBBY.code = 'LIVE'
 local ok, err = pcall(session.start)
 assert(not ok and err:find('Leave the Multiplayer lobby'))
 MP.LOBBY.code = nil
-BalatroActionRecorder.ok = false
-ok, err = pcall(session.start)
-assert(not ok and err:find('Action Recorder'))
-BalatroActionRecorder.ok = true
 SMODS.Mods.Multiplayer.version = '0.5.4'
 ok, err = pcall(session.start)
 assert(not ok and err:find('Install Multiplayer 0.5.5'))
@@ -315,6 +311,34 @@ end
 assert(session.phase == 'finished', session.text)
 assert(table.concat(performed, ',') == 'select_blind 0,play 1.2,ready_blind 1,buy 1 1,reroll', table.concat(performed, ','))
 assert(session.text:find('Replay complete %- all 6 actions') and session.text:find('run.jsonl'), session.text)
+session.on_main_menu()
+
+-- Without Balatro Observer's Action Recorder the replay runs just the same.
+local saved_recorder = BalatroActionRecorder
+BalatroActionRecorder = nil
+performed = {}
+begin()
+for _ = 1, 80 do
+    now = now + 1
+    session.update(0.1)
+    channel.items = {}
+    if session.phase ~= 'running' then break end
+    local current = session.current()
+    if current and current.kind == 'action' and current.auto then emit(current) end
+end
+assert(session.phase == 'finished' and #performed == 5, session.text)
+assert(session.text == 'Replay complete - all 6 actions', session.text)
+-- A recording that stops halfway still stops the replay.
+BalatroActionRecorder = saved_recorder
+session.on_main_menu()
+begin()
+BalatroActionRecorder.ok = false
+now = now + 1
+session.update(0.1)
+assert(session.phase == 'failed' and session.text:find('Action Recorder stopped writing'), session.text)
+BalatroActionRecorder.ok = true
+channel.items = {}
+session.stop()
 assert(#records == 0 and #channel.items == 0)
 session.on_main_menu()
 assert(session.phase == 'idle' and MP.LOBBY.code == nil)

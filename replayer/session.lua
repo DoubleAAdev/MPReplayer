@@ -28,6 +28,8 @@ return function(log, driver, JSON, deps)
     local allowed_sends = {username = true, version = true, keepAliveAck = true, connect = true}
     local SETTLE, STALL, RECORD, BLOCKED = 0.4, 45, 20, 10
 
+    -- Balatro Observer's Action Recorder, when it is installed. It is optional:
+    -- a replay runs the same without it, there is just no recording to export.
     local function recorder() return BalatroActionRecorder end
 
     local function write_status()
@@ -173,7 +175,6 @@ return function(log, driver, JSON, deps)
         assert(MP and MP.LOBBY and MP.RLOG and MP.Rulesets and MP.Gamemodes and MP.GAME, 'Multiplayer is required')
         assert(G.STAGE == G.STAGES.MAIN_MENU, 'Return to the main menu first')
         assert(not MP.LOBBY.code, 'Leave the Multiplayer lobby first')
-        assert(recorder() and recorder().ok, 'Action Recorder must be enabled')
         assert(Client and type(Client.send) == 'function', 'Multiplayer networking is not loaded')
         assert(MP.Rulesets[m.ruleset], 'Ruleset ' .. m.ruleset .. ' is not installed')
         assert(MP.Gamemodes[m.gamemode], 'Game mode ' .. m.gamemode .. ' is not installed')
@@ -313,7 +314,8 @@ return function(log, driver, JSON, deps)
         local rec = recorder()
         local text = session.run.complete and ('Replay complete - all ' .. session.run.actions .. ' actions')
             or ('Replay reached the end of a partial log - ' .. progress() .. ' actions')
-        S.status(text .. ', ' .. tostring(rec and rec.action_count or 0) .. ' recorded actions in ' .. tostring(rec and rec.path or 'no recording'))
+        if session.recording and rec then text = text .. ', ' .. tostring(rec.action_count or 0) .. ' recorded actions in ' .. tostring(rec.path) end
+        S.status(text)
     end
 
     function S.stop()
@@ -355,7 +357,7 @@ return function(log, driver, JSON, deps)
         local deck = ((((G.GAME or {}).selected_back or {}).effect or {}).center or {}).key
         if deck ~= session.key then return fail('the run started with deck ' .. tostring(deck) .. ', the log has ' .. session.key) end
         local rec = recorder()
-        if not (rec and rec.ok and rec.path) then return fail('Action Recorder did not start a recording') end
+        session.recording = rec and rec.ok and rec.path or nil
         S.phase = 'running'
         session.signature, session.signature_at = nil, nil
         S.status('Replay running - ' .. progress() .. ' actions')
@@ -440,8 +442,9 @@ return function(log, driver, JSON, deps)
             S.status('Replay stopped: the run ended - ' .. progress() .. ' actions')
             return
         end
+        -- A recording that was running must not go missing halfway through.
         local rec = recorder()
-        if not (rec and rec.ok) then return fail('Action Recorder stopped writing') end
+        if session.recording and not (rec and rec.ok) then return fail('Action Recorder stopped writing') end
         local entry = session.entries[session.cursor]
         if not entry then return finish() end
         if entry.kind == 'message' then
