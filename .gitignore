@@ -23,3 +23,6 @@ __pycache__/
 
 # Diagnostic replay captures
 *.trace
+
+# Local crash diagnostics
+*.dmp

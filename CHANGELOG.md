@@ -1,3 +1,8 @@
+# 2.0.5
+
+- Fix a deadlock after the final PvP hand: Multiplayer intentionally waits in HAND_PLAYED for the opponent result.
+- Recognize the completed score report and wait for remaining effects before releasing incoming messages. Keep discard completion protection and suppress outgoing replay traffic.
+
 # 2.0.4
 
 - Wait for played/discarded hands, redraws, and queued effects to finish after the input is acknowledged.

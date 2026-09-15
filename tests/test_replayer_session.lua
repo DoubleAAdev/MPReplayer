@@ -433,3 +433,40 @@ for i=1,4 do now=now+1;session.update(.1) end
 assert(play_calls==1 and sell_calls==1 and session.phase=='finished',session.text)
 session.on_main_menu()
 print('PASS: play runs once and completes redraw/effects before network delivery or the next input')
+
+
+-- Last PvP hand stays HAND_PLAYED while waiting for endPvP. A score report
+-- plus finished queued effects must release messages without another input.
+local last_hand_calls=0
+session.runs[1].entries={
+ {kind='action',op='play',args={'1.7.8'},text='play 1.7.8',seq=157,line=934},
+ {kind='message',action='enemyInfo',fields={action='enemyInfo',score='5490'},line=943},
+ {kind='message',action='endPvP',fields={action='endPvP',lost=false},line=946},
+}
+session.runs[1].actions=1
+MP.is_pvp_boss=function() return true end
+driver.state_name=function() return 'HAND_PLAYED' end
+driver.perform=function()
+ last_hand_calls=last_hand_calls+1
+ MP.RLOG.record('play',{{1,7,8}})
+ G.GAME.current_round={hands_left=0}
+ G.hand={cards={}};G.play={cards={}}
+ return 'done'
+end
+begin()
+for i=1,4 do now=now+1;session.update(.1) end
+assert(last_hand_calls==1 and #channel.items==0,'Empty areas alone do not prove scoring finished')
+local send_count=#sends
+Client.send({action='playHand',score='29406',handsLeft=0})
+assert(#sends==send_count,'Score report must remain offline')
+G.E_MANAGER.queues.base={{blocking=true,complete=false}}
+now=now+1;session.update(.1)
+assert(#channel.items==0,'Final hand effects must finish before endPvP')
+G.E_MANAGER.queues.base={}
+now=now+1;session.update(.1)
+assert(#channel.items==2 and sent_last().action=='endPvP',session.text)
+assert(last_hand_calls==1 and session.phase=='running')
+now=now+1;session.update(.1)
+assert(session.phase=='finished',session.text)
+session.on_main_menu()
+print('PASS: exhausted PvP hand releases opponent result after scoring and effects without resending input or network traffic')

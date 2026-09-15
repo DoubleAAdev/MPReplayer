@@ -285,6 +285,12 @@ return function(log, driver, JSON, deps)
         if MP.SP then MP.SP.practice = false end
         if MP.GHOST and MP.GHOST.clear then MP.GHOST.clear() end
         Client.send = function(msg)
+            -- Multiplayer reports the score after evaluation, then stays in
+            -- HAND_PLAYED on its last hand until the server ends the PvP round.
+            if type(msg) == 'table' and msg.action == 'playHand' and session
+                and session.hand_pending and session.hand_pending.op == 'play' then
+                session.hand_pending.score_reported = true
+            end
             if type(msg) == 'table' and allowed_sends[msg.action] then return saved.send(msg) end
         end
         MP.RLOG.record = S.record
@@ -463,7 +469,11 @@ return function(log, driver, JSON, deps)
         if session.hand_pending then
             if paused() then session.hand_pending.began = now; return end
             local state = driver.state_name()
-            local resolving = state == 'HAND_PLAYED' or state == 'DRAW_TO_HAND' or state == 'DISCARD'
+            local waiting_for_opponent = state == 'HAND_PLAYED' and session.hand_pending.score_reported
+                and MP.is_pvp_boss and MP.is_pvp_boss()
+                and ((G.GAME.current_round or {}).hands_left or 1) < 1
+                and G.hand and G.hand.cards and #G.hand.cards == 0
+            local resolving = (state == 'HAND_PLAYED' and not waiting_for_opponent) or state == 'DRAW_TO_HAND' or state == 'DISCARD'
                 or state == 'NEW_ROUND' or (G.play and G.play.cards and #G.play.cards > 0)
             if resolving or busy() or now - (session.consumed or 0) < SETTLE then
                 if now - session.hand_pending.began > STALL then

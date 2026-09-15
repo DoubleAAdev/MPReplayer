@@ -7,7 +7,7 @@
   "description": "Replay a Multiplayer game from its Lovely log, action by action.",
   "prefix": "brpl",
   "main_file": "main.lua",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "dependencies": [
     "Steamodded (>=1.0.0~BETA)"
   ]

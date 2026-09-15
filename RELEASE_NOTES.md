@@ -1,7 +1,5 @@
-# Balatro Replayer 2.0.4
+# Balatro Replayer 2.0.5
 
-Fix replay advancing after a play/discard callback while the hand is still resolving. Subsequent network messages and inputs now wait for scoring, redraws, and queued effects. Original Lovely-log loading is unchanged.
+Fix the 2.0.4 stall on the final hand of PvP. Once Multiplayer reports the score and queued hand effects finish, the replay can deliver the opponent result even while Multiplayer remains in HAND_PLAYED. Discard completion protection remains in place.
 
-Restart Balatro and replay the log from the beginning; an already-diverged run cannot be repaired by this update.
-
-Validation: five Lua suites, including play/discard completion regressions. Full in-game replay of the supplied log remains unverified.
+Validation: all five Lua suites, including exhausted-hand PvP, play/discard completion and offline score-report regressions. Full in-game playback remains unverified. Restart Balatro and replay from the beginning.
