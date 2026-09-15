@@ -1,3 +1,8 @@
+# 2.0.1
+
+- Explain how to recover older text exports from the original JSONL journal instead of showing a JSON parser error.
+- Accept UTF-8 BOMs in action-log exports and journals.
+
 # 2.0.0
 
 - Load Action Recorder text exports and JSONL journals, retaining Lovely-log support.

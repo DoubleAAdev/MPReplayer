@@ -7,7 +7,7 @@
   "description": "Replay Observer action logs and Multiplayer Lovely logs through game callbacks.",
   "prefix": "brpl",
   "main_file": "main.lua",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "dependencies": [
     "Steamodded (>=1.0.0~BETA)"
   ]

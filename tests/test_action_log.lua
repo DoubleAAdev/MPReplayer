@@ -37,3 +37,9 @@ assert(f,'Missing cross-repository export fixture');local exported=f:read('*a');
 local exportedRun=importer.parse(exported)[1]
 assert(exportedRun.actions==13 and exportedRun.manifest.seed=='REPLAY42')
 print('PASS: actual exported text import, single-player and Multiplayer routing, ordered network events, card references, hand outcomes and invalid-input rejection')
+
+fails('Balatro action log | old\nRun setup: {}\n1. play', 'original %.jsonl')
+assert(importer.parse(string.char(239,187,191)..exported)[1].actions==13)
+local raw=json.encode({schema_version=2,index_base=1,recording={seed='TEST',deck='b_red',stake=1}})..'\n'..json.encode({action={n=1,type='reroll'}})
+assert(importer.parse(string.char(239,187,191)..raw)[1].actions==1)
+print('PASS: legacy text recovery guidance and UTF-8 BOM imports')

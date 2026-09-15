@@ -15,8 +15,11 @@ return function(decode,log)
     end
     function M.parse(text)
         assert(type(text)=='string' and #text<=128*1024*1024,'Action log exceeds 128 MB')
+        text=text:gsub('^'..string.char(239,187,191),'')
         local header,records={},{}
         local annotated=text:find('Replay header: ',1,true)~=nil
+        assert(annotated or not text:find('Balatro action log |',1,true),
+            'Older text export has no replay records. Load the original .jsonl journal or re-export it with Observer 2.0.0 or later.')
         for line in (text..'\n'):gmatch('(.-)\r?\n') do
             local h=annotated and line:match('^Replay header: (.*)$')
             local r=annotated and line:match('^Replay record: (.*)$')

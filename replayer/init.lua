@@ -8,6 +8,7 @@ return function(mod, JSON)
     local action_log=load('action-log.lua')(json.decode,log)
     local legacy_parse=log.parse
     log.parse=function(text)
+        text=text:gsub('^'..string.char(239,187,191),'')
         if text:find('Replay header: ',1,true) or text:match('^%s*{') or text:find('Balatro action log |',1,true) then return action_log.parse(text) end
         return legacy_parse(text)
     end

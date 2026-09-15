@@ -11,3 +11,6 @@ __pycache__/
 /.test-runtime/
 /node_modules/
 *.log
+
+# Local player checklist
+/missing.txt
