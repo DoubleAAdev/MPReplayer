@@ -238,11 +238,6 @@ return function(decode)
     -- The card, blind or cost named by a mirrored line, checked before an
     -- action is executed so it touches what the player's action touched.
     function M.expectation(entry)
-        if entry.recorded then
-            local a=entry.recorded
-            local d=((a.cards or {})[1] or {}).descriptor or {}
-            return {name=d.name,cost=a.price,blind=(a.blind or {}).key}
-        end
         local human = entry.human
         if not human then return {} end
         local name, cost = human:match('^boughtCardFromShop,card:(.*),cost:(%-?%d+)$')

@@ -148,7 +148,6 @@ return function(log)
     -- How a logged purchase was made: a refused click, a plain buy, or
     -- "Buy & Use". Returns the mode and the evidence.
     function M.purchase_mode(entry, card, entries)
-        if entry.recorded then return entry.recorded.use_after_buy and 'buy_and_use' or 'buy', 'recorded button' end
         local cost = card.cost or 0
         local money = entry.money or {}
         local paid = cost == 0
@@ -278,9 +277,6 @@ return function(log)
         local mode, evidence = M.purchase_mode(entry, card, entries)
         M.note = card_name(card) .. ': ' .. mode .. ' (' .. evidence .. ')'
         local id = mode == 'buy_and_use' and 'buy_and_use' or 'buy'
-        if entry.recorded and entry.args[1] and entry.recorded.targets and #entry.recorded.targets>0 then
-            local slots={};for _,c in ipairs(entry.recorded.targets) do slots[#slots+1]=c.index end;highlight(slots)
-        end
         local e, button = probe(id == 'buy_and_use' and 'can_buy_and_use' or 'can_buy', card, id)
         if button ~= 'buy_from_shop' then error('the game refuses to buy ' .. card_name(card) .. ' (not enough money)') end
         local accepted = G.FUNCS.buy_from_shop(e) ~= false
@@ -309,7 +305,6 @@ return function(log)
         if not name then error('the log does not name the card used at slot ' .. slot) end
         local candidates = {'consumeables'}
         if state_is('SHOP') then candidates = {'consumeables', 'shop_booster', 'shop_vouchers'} end
-        if entry.recorded then candidates={entry.recorded.area} end
         local card, area_name
         for _, candidate in ipairs(candidates) do
             local list = cards_of(G[candidate])
@@ -406,18 +401,13 @@ return function(log)
         end
         -- The hand's sort buttons leave the same permutation as a drag would,
         -- but they also change how every later draw is sorted.
-        if not entry.recorded and area == G.hand and not single_move(order) and list[1] and list[1].get_nominal then
+        if area == G.hand and not single_move(order) and list[1] and list[1].get_nominal then
             for _, method in ipairs({'suit desc', 'desc'}) do
                 if same_order(after, sorted_like(list, method)) then
                     area:sort(method)
                     return 'done'
                 end
             end
-        end
-        if entry.recorded and entry.recorded.sort and area.config then
-            local sort=entry.recorded.sort
-            assert(sort=='desc' or sort=='asc' or sort=='suit desc' or sort=='suit asc' or sort=='order','Unsupported hand sort')
-            area.config.sort=sort
         end
         for i, card in ipairs(after) do list[i] = card end
         if area.set_ranks then area:set_ranks() end
@@ -482,60 +472,9 @@ return function(log)
         return state_is('BLIND_SELECT') or state_is('SHOP') or state_is('ROUND_EVAL')
     end
 
-    local identities={}
-    function M.reset() identities={} end
-    function M.check_cards(area_name,refs,whole)
-        local list=cards_of(G[area_name])
-        assert(list,area_name..' is not available for validation')
-        if whole then assert(#list==#refs,area_name..' size differs from the action log') end
-        for _,ref in ipairs(refs) do
-            local c=assert(list[ref.index],area_name..' is missing slot '..ref.index)
-            if ref.hidden then assert(c.facing~='front','A recorded face-down card is face up')
-            else
-                assert(c.facing=='front','A recorded visible card is face down')
-                local d=ref.descriptor or {}
-                local center=(c.config or {}).center or {}
-                for _,key in ipairs({'rank','suit'}) do
-                    local actual=key=='rank' and (c.base or {}).value or (c.base or {}).suit
-                    if d[key]~=nil then assert(actual==d[key],area_name..' slot '..ref.index..' '..key..' differs') end
-                end
-                if d.key then assert(center.key==d.key,area_name..' slot '..ref.index..' card differs') end
-                assert((c.seal or nil)==(d.seal or nil),'Card seal differs')
-                assert((c.debuff==true)==(d.debuff==true),'Card debuff differs')
-                for _,key in ipairs({'foil','holo','polychrome','negative','mp_phantom'}) do
-                    assert(((c.edition or {})[key]==true)==((d.edition or {})[key]==true),'Card edition differs')
-                end
-                for _,key in ipairs({'eternal','perishable','rental','perish_tally'}) do
-                    local actual=(c.ability or {})[key];local want=(d.stickers or {})[key]
-                    assert((actual or false)==(want or false),'Card sticker differs')
-                end
-                assert(((c.ability or {}).perma_bonus or 0)==(d.perma_bonus or 0),'Permanent chips differ')
-                if ref.instance then
-                    if identities[ref.instance] then assert(identities[ref.instance]==c,'Physical card identity differs')
-                    else identities[ref.instance]=c end
-                end
-            end
-        end
-    end
-
     -- Perform one input. Returns 'done' or 'wait', reason. `entries` is the
     -- whole log, for inputs whose meaning depends on what follows.
     function M.perform(entry, entries)
-        if entry.kind=='hand_check' then M.check_cards('hand',entry.cards,true);return 'done' end
-        if entry.automatic_blind then
-            if state_is('BLIND_SELECT') then return 'wait','the recorded PvP blind to start' end
-            local key=(((((G.GAME or {}).blind or {}).config or {}).blind or {}).key)
-            assert(key==(entry.recorded.blind or {}).key,'The automatic PvP blind differs')
-            return 'done'
-        end
-        local a=entry.recorded
-        if a then
-            if a.hand_before and state_is('SELECTING_HAND') then M.check_cards('hand',a.hand_before,true) end
-            local area=a.area
-            if a.type~='reorder' and a.cards and G[area] and (not area:match('^shop_') or state_is('SHOP')) and (area~='hand' or state_is('SELECTING_HAND')) then
-                M.check_cards(area,a.cards,false)
-            end
-        end
         local handler = handlers[entry.op]
         if not handler then error('the replay cannot perform ' .. tostring(entry.op)) end
         M.note = nil

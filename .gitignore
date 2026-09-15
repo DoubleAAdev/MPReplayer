@@ -17,3 +17,6 @@ __pycache__/
 
 # Temporary local diagnostics
 *.tmp
+
+# Local backup artifacts
+*.bak

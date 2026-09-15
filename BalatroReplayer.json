@@ -4,10 +4,10 @@
   "author": [
     "DoubleAAdev"
   ],
-  "description": "Replay Observer action logs and Multiplayer Lovely logs through game callbacks.",
+  "description": "Replay a Multiplayer game from its Lovely log, action by action.",
   "prefix": "brpl",
   "main_file": "main.lua",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "dependencies": [
     "Steamodded (>=1.0.0~BETA)"
   ]

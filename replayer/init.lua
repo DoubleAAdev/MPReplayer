@@ -5,13 +5,6 @@ return function(mod, JSON)
     local function load(name) return assert(SMODS.load_file('replayer/' .. name, mod.id))() end
     local json = require('json')
     local log = load('log.lua')(json.decode)
-    local action_log=load('action-log.lua')(json.decode,log)
-    local legacy_parse=log.parse
-    log.parse=function(text)
-        text=text:gsub('^'..string.char(239,187,191),'')
-        if text:find('Replay header: ',1,true) or text:match('^%s*{') or text:find('Balatro action log |',1,true) then return action_log.parse(text) end
-        return legacy_parse(text)
-    end
     local driver = load('driver.lua')(log)
     local session = load('session.lua')(log, driver, JSON, {
         clock = function() return love.timer.getTime() end,
@@ -20,7 +13,7 @@ return function(mod, JSON)
     })
     local pick_file = load('file-picker.lua')
     BalatroReplayer = session
-    local limit = 128 * 1024 * 1024
+    local limit = 16 * 1024 * 1024
 
     local function protect(fn, fatal)
         local ok, err = pcall(fn)
@@ -35,7 +28,7 @@ return function(mod, JSON)
             local path = pick_file()
             if not path then return end
             local info = NFS.getInfo(path)
-            assert(info and info.type == 'file' and info.size and info.size <= limit, 'Select a log file smaller than 128 MB')
+            assert(info and info.type == 'file' and info.size and info.size <= limit, 'Select a log file smaller than 16 MB')
             session.load(assert(NFS.read(path), 'Could not read the selected log'))
         end)
     end
@@ -45,11 +38,10 @@ return function(mod, JSON)
 
     local previous_drop = love.filedropped
     love.filedropped = function(file)
-        local ext=file:getFilename():lower():match('%.([^%.]+)$')
-        if ext=='log' or ext=='txt' or ext=='jsonl' then
+        if file:getFilename():lower():match('%.log$') then
             protect(function()
                 assert(session.phase == 'idle', 'Finish the current replay before loading another log')
-                assert(file:getSize() <= limit, 'Log exceeds 128 MB')
+                assert(file:getSize() <= limit, 'Log exceeds 16 MB')
                 file:open('r')
                 local text = file:read()
                 file:close()

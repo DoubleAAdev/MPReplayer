@@ -48,7 +48,7 @@ assert(session.runs ~= loaded and session.runs[1].actions == 2, session.text)
 -- The filtered actions are written out for the player to read.
 assert(writes['balatro_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['balatro_replayer/actions.txt'])
 assert(session.text:find('2 actions') and session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
-local other = {getFilename = function() return 'notes.png' end}
+local other = {getFilename = function() return 'notes.txt' end}
 love.filedropped(other)
 assert(session.runs[1].actions == 2, 'other files are not logs')
 

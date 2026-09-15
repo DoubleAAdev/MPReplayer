@@ -1,23 +1,13 @@
 # Balatro Replayer
 
-A Steamodded mod that replays Observer Action Recorder exports and Multiplayer Lovely logs through the game callbacks. With [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver) installed, its Action Recorder records the replay with card identities.
+A Steamodded mod that replays a Multiplayer game from its Lovely log, action by action. With [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver) installed, its Action Recorder records the replay with card identities.
 
 It was part of Balatro Observer until version 1.10.0 and moved here unchanged.
-
-## Action Recorder logs (v2.0.0)
-
-Export a run from Observer/Action Recorder v2.0.0. Choose **Load Log** and select its `.txt`, or drop a `.txt` or `.jsonl` onto Balatro. Single-player runs start with the recorded seed, deck and stake. Multiplayer runs recreate the recorded lobby and deliver captured opponent messages locally. They never send gameplay messages to the server.
-
-Exact card slots, visible identities, buy/use choices and hand sorting are read from the structured replay records in the text file. Settled hands are validated before continuing; divergence stops playback. Observer is optional during playback. Keep the same game and gameplay mod versions as the recording.
-
-Older single-player journals with seed/deck metadata can be re-exported using Observer v2.0.0. Multiplayer requires a fresh v2.0.0 recording with network events. Resumed segments and challenges cannot be started from their beginning. Hidden opponent scores remain masked, and unsupported custom network effects are not reconstructed. Reaching the final recorded action does not imply the original game was finished.
-
-The tests use Steamodded's installed JSON decoder; set BALATRO_JSON_LUA if it is installed outside the default Windows Mods folder. The checked-in action-recorder-v2.txt fixture was produced by Observer's C# export server.
 
 ## Requirements
 
 - [Steamodded](https://github.com/Steamodded/smods) 1.0.0 beta or newer
-- For Multiplayer recordings: the Multiplayer mod, at the version the log was played with (the log's manifest names it)
+- The Multiplayer mod, at the version the log was played with (the log's manifest names it)
 
 ## Install
 

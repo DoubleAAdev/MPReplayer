@@ -1,3 +1,8 @@
+# 2.0.3
+
+- Restore the pre-v2.0 Replayer implementation from v1.3.0: load original Multiplayer Lovely logs and replay through the recorded lobby.
+- Remove Action Recorder text/JSONL replay support. Observer and Action Recorder are unchanged.
+
 # 2.0.2
 
 - Start action-log runs through Balatro's normal transition so the title screen is removed before the run appears.

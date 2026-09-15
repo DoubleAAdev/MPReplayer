@@ -354,17 +354,6 @@ assert(#records == 0 and #channel.items == 0)
 session.on_main_menu()
 assert(session.phase == 'idle' and MP.LOBBY.code == nil)
 
--- Action-log sessions acknowledge successful callbacks directly. Multiplayer's
--- own RLOG hooks must not advance them twice, and messages retain their order.
-session.runs[1].source='action_log'
-for _,e in ipairs(session.runs[1].entries) do e.auto=nil end
-performed={}
-begin()
-for _=1,100 do now=now+1;session.update(.1);channel.items={};if session.phase~='running' then break end end
-assert(session.phase=='finished' and session.progress()=='6/6' and #performed==6,session.text)
-session.on_main_menu()
-session.runs[1].source=nil
-
 -- Nothing the replay did reached the Lovely log.
 assert(#lovely == 0, 'the replay wrote to the Lovely log: ' .. tostring(lovely[1]))
 
