@@ -1,3 +1,8 @@
+# 2.0.2
+
+- Start action-log runs through Balatro's normal transition so the title screen is removed before the run appears.
+- Wait for the run-start hook before executing replay actions.
+
 # 2.0.1
 
 - Explain how to recover older text exports from the original JSONL journal instead of showing a JSON parser error.

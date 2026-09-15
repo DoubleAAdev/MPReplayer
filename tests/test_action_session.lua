@@ -16,7 +16,20 @@ function G.hand:add_to_highlighted(c)self.highlighted[#self.highlighted+1]=c end
 G.FUNCS.can_play=function(e)e.config.button='play_cards_from_highlighted'end
 G.FUNCS.play_cards_from_highlighted=function()calls=calls+1;G.hand.cards={}end
 local session=dofile('replayer/session.lua')(log,driver,JSON,{clock=function()return now end})
+local pending_start,transition_calls
+transition_calls=0
+G.title_screen=true
+G.FUNCS.start_run=function(_,args)
+ transition_calls=transition_calls+1
+ pending_start=function() G.title_screen=nil;G:start_run(args) end
+end
+local function complete_start()
+ assert(session.phase=='starting' and pending_start,session.text)
+ local start=pending_start;pending_start=nil;start()
+ assert(session.phase=='running' and not G.title_screen,session.text)
+end
 function G:start_run(args)
+ assert(not G.title_screen,'Run creation bypassed title-screen cleanup')
  self.STAGE=2;self.GAME.pseudorandom={seed=args.seed};self.GAME.selected_back=self.GAME.viewed_back
  session.on_run_started() -- same lifecycle hook as production
 end
@@ -26,12 +39,15 @@ local ref={card='1',instance=1,index=1}
 local a={cards={['1']={key='c_base',rank='Ace',suit='Spades'}},action={n=1,type='play',area='hand',cards={ref},hand_before={ref}}}
 local o={observation={after_action=1,areas={},hand_after={},hand_boundary='settled'}}
 local text='Replay header: '..json.encode(h)..'\nReplay record: '..json.encode(a)..'\nReplay record: '..json.encode(o)
-session.load(text);session.start();assert(session.phase=='running',session.text)
+session.load(text);session.start()
+assert(session.phase=='starting' and G.title_screen and calls==0)
+now=now+.5;session.update(.5);assert(calls==0 and session.phase=='starting')
+complete_start();assert(transition_calls==1)
 for i=1,8 do now=now+.5;session.update(.5) end
 assert(session.phase=='finished' and calls==1 and session.progress()=='1/1',session.text)
 G:main_menu();assert(session.phase=='idle')
 -- A mismatching card must fail before any input, even if the slot exists.
-G.hand.cards={card};card.base.value='King';session.load(text);session.start()
+G.hand.cards={card};card.base.value='King';session.load(text);session.start();complete_start()
 for i=1,4 do now=now+.5;session.update(.5) end
 assert(session.phase=='failed' and calls==1 and session.text:find('rank differs'),session.text)
 session.stop();assert(session.phase=='idle')

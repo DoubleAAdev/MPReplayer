@@ -273,8 +273,9 @@ return function(log, driver, JSON, deps)
             if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
             S.phase='starting'
             S.status('Replay starting action log '..m.seed)
-            G:start_run({seed=m.seed,stake=m.stake})
-            if S.phase=='starting' then S.on_run_started() end
+            -- The button callback clears the title screen and queues run creation.
+            -- Game.start_run's hook marks playback ready only after that completes.
+            G.FUNCS.start_run(nil,{seed=m.seed,stake=m.stake})
             return
         end
         saved = {send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
