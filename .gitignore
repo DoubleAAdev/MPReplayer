@@ -4,3 +4,10 @@ __pycache__/
 
 # Replay status and action lists, if Balatro's save folder is ever pointed here
 /balatro_replayer/
+
+# Local exports, runtime downloads, release packages and browser captures
+/work/
+/dist/
+/.test-runtime/
+/node_modules/
+*.log

@@ -1,7 +1,7 @@
 -- Windows' own Open dialog, started in the Lovely log folder. The chosen
 -- path comes back as UTF-8; no shell is involved.
 return function()
-    assert(love.system.getOS() == 'Windows', 'Drop a .log file onto Balatro on this platform')
+    assert(love.system.getOS() == 'Windows', 'Drop a .txt, .jsonl or .log file onto Balatro on this platform')
     local ffi = require('ffi')
     if not pcall(ffi.typeof, 'BOBS_OPENFILENAMEW') then
         ffi.cdef[[
@@ -33,8 +33,8 @@ return function()
         return buffer
     end
     local filename = ffi.new('wchar_t[32768]')
-    local filter = wide('Lovely logs (*.log)\0*.log\0All files (*.*)\0*.*\0\0')
-    local title = wide('Replayer - choose a Multiplayer log')
+    local filter = wide('Action and Lovely logs (*.txt;*.jsonl;*.log)\0*.txt;*.jsonl;*.log\0All files (*.*)\0*.*\0\0')
+    local title = wide('Replayer - choose an action log or Lovely log')
     local options = ffi.new('BOBS_OPENFILENAMEW')
     options.lStructSize = ffi.sizeof(options)
     options.hwndOwner = user.GetActiveWindow()

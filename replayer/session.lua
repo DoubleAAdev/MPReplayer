@@ -19,7 +19,7 @@
 -- back to it - so a replay never leaves behind a log that reads like another
 -- game. Progress is shown in the config tab and balatro_replayer/status.json.
 return function(log, driver, JSON, deps)
-    local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1}
+    local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick an action log or Multiplayer log', index = 1}
     local directory = 'balatro_replayer'
     local clock = deps.clock
     local session, saved
@@ -109,6 +109,7 @@ return function(log, driver, JSON, deps)
     -- runs. set_ante_key is the game's bookkeeping, not an action.
     function S.record(op, args, human)
         local original = saved and saved.record
+        if session and session.run.source=='action_log' then return end
         if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure then
             return original(op, args, human)
         end
@@ -172,6 +173,13 @@ return function(log, driver, JSON, deps)
 
     local function validate(run)
         local m = run.manifest
+        if run.singleplayer then
+            assert(G.STAGE==G.STAGES.MAIN_MENU,'Return to the main menu first')
+            assert(not (MP and MP.LOBBY and MP.LOBBY.code),'Leave the Multiplayer lobby first')
+            assert(not m.challenge or m.challenge=='','Challenge runs cannot be replayed')
+            local key=assert(deck_key(m.deck),'Recorded deck is not installed')
+            return key,G.P_CENTERS[key].name or key
+        end
         assert(MP and MP.LOBBY and MP.RLOG and MP.Rulesets and MP.Gamemodes and MP.GAME, 'Multiplayer is required')
         assert(G.STAGE == G.STAGES.MAIN_MENU, 'Return to the main menu first')
         assert(not MP.LOBBY.code, 'Leave the Multiplayer lobby first')
@@ -222,6 +230,14 @@ return function(log, driver, JSON, deps)
     -- Steamodded, for one, rolls a different boss blind. Said before the run
     -- starts rather than found out at the first thing that differs.
     local function mod_difference(m)
+        if m.mods then
+            local recorded,current={},{}
+            local function relevant(id) return id~='BalatroObserver' and id~='BalatroReplayer' end
+            for _,mod in ipairs(m.mods) do if relevant(mod.id) then recorded[mod.id]=mod.version end end
+            for id,mod in pairs((SMODS or {}).Mods or {}) do if relevant(id) and not mod.disabled then current[id]=mod.version end end
+            for id,v in pairs(recorded) do if current[id]~=v then return 'Mods differ from the log: '..id..' version '..tostring(v) end end
+            for id in pairs(current) do if not recorded[id] then return 'Mods differ from the log: additional '..id end end
+        end
         if type(m.mod_hash) ~= 'string' or type(MP.MOD_STRING) ~= 'string' or MP.MOD_STRING == '' then return nil end
         local logged, installed = mods_of(m.mod_hash), mods_of(MP.MOD_STRING)
         local missing, extra = {}, {}
@@ -248,7 +264,19 @@ return function(log, driver, JSON, deps)
             error(differs .. '. The replay may stop early. Press Start Replay again to replay anyway', 0)
         end
         S.confirmed = nil
-        classify(run.entries)
+        if driver.reset then driver.reset() end
+        if run.source~='action_log' then classify(run.entries) end
+        if run.singleplayer then
+            saved={singleplayer=true,viewed_back=(G.GAME or {}).viewed_back}
+            session={run=run,entries=run.entries,cursor=1,done=0,key=key,began=clock(),tick=0,started_at=clock()}
+            G.GAME.viewed_back=Back(key)
+            if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
+            S.phase='starting'
+            S.status('Replay starting action log '..m.seed)
+            G:start_run({seed=m.seed,stake=m.stake})
+            if S.phase=='starting' then S.on_run_started() end
+            return
+        end
         saved = {send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
             modifiers = MP.MODIFIERS, sp = {}, lobby = {}}
         for k, v in pairs(MP.SP or {}) do saved.sp[k] = v end
@@ -306,6 +334,11 @@ return function(log, driver, JSON, deps)
 
     local function cleanup()
         if not saved then return end
+        if saved.singleplayer then
+            if G.GAME then G.GAME.viewed_back=saved.viewed_back end
+            saved=nil
+            return
+        end
         Client.send = saved.send
         MP.RLOG.record = saved.record
         if MP.STATS then MP.STATS.record_match = saved.record_match end
@@ -321,7 +354,8 @@ return function(log, driver, JSON, deps)
     local function finish()
         S.phase = 'finished'
         local rec = recorder()
-        local text = session.run.complete and ('Replay complete - all ' .. session.run.actions .. ' actions')
+        local text = session.run.source=='action_log' and ('Replay reached the end of the action log - '..progress()..' recorded actions')
+            or session.run.complete and ('Replay complete - all ' .. session.run.actions .. ' actions')
             or ('Replay reached the end of a partial log - ' .. progress() .. ' actions')
         if session.recording and rec then text = text .. ', ' .. tostring(rec.action_count or 0) .. ' recorded actions in ' .. tostring(rec.path) end
         S.status(text)
@@ -334,7 +368,7 @@ return function(log, driver, JSON, deps)
         if G.STAGE == G.STAGES.RUN then
             -- Multiplayer leaves a run and returns to the menu when the lobby
             -- code goes away; the menu hook restores the rest.
-            MP.LOBBY.code = nil
+            if session.run.singleplayer then G:main_menu('game') else MP.LOBBY.code = nil end
         else
             cleanup()
             S.phase = 'idle'
@@ -365,6 +399,7 @@ return function(log, driver, JSON, deps)
         if seed ~= m.seed and seed ~= '*' .. m.seed then return fail('the run started with seed ' .. tostring(seed) .. ', the log has ' .. m.seed) end
         local deck = ((((G.GAME or {}).selected_back or {}).effect or {}).center or {}).key
         if deck ~= session.key then return fail('the run started with deck ' .. tostring(deck) .. ', the log has ' .. session.key) end
+        if m.hand_sort and G.hand and G.hand.config then G.hand.config.sort=m.hand_sort end
         local rec = recorder()
         session.recording = rec and rec.ok and rec.path or nil
         S.phase = 'running'
@@ -385,7 +420,7 @@ return function(log, driver, JSON, deps)
             if locked then return 'controller lock ' .. tostring(name) end
         end
         if ((G.GAME or {}).STOP_USE or 0) > 0 then return 'cards cannot be used yet' end
-        if MP.GAME and MP.GAME.pvp_countdown_in_progress then return 'the PvP countdown' end
+        if MP and MP.GAME and MP.GAME.pvp_countdown_in_progress then return 'the PvP countdown' end
         for name, queue in pairs((G.E_MANAGER or {}).queues or {}) do
             for _, event in ipairs(queue) do
                 if event.blocking and not event.complete then return 'events in the ' .. name .. ' queue' end
@@ -445,7 +480,7 @@ return function(log, driver, JSON, deps)
             return
         end
         if S.phase ~= 'running' then return end
-        if MP.LOBBY.code ~= session.code then MP.LOBBY.code = session.code end
+        if not session.run.singleplayer and MP.LOBBY.code ~= session.code then MP.LOBBY.code = session.code end
         if G.STAGE ~= G.STAGES.RUN then
             S.phase = 'stopped'
             S.status('Replay stopped: the run ended - ' .. progress() .. ' actions')
@@ -455,7 +490,20 @@ return function(log, driver, JSON, deps)
         local rec = recorder()
         if session.recording and not (rec and rec.ok) then return fail('Action Recorder stopped writing') end
         local entry = session.entries[session.cursor]
-        if not entry then return finish() end
+        if not entry then
+            if paused() or busy() then return end
+            return finish()
+        end
+        if paused() then session.waiting_since=nil;return end
+        if entry.kind=='opponent' then
+            local enemy=MP.GAME.enemy or {};MP.GAME.enemy=enemy
+            local state=entry.state
+            for key,field in pairs({nemesis_location='location',nemesis_location_blind='location_blind',nemesis_score='score_text',nemesis_hands='hands_text',nemesis_lives='lives'}) do
+                if state[key]~=nil then enemy[field]=state[key] end
+            end
+            session.cursor=session.cursor+1
+            return
+        end
         if entry.kind == 'message' then
             while entry and entry.kind == 'message' do
                 deliver(entry)
@@ -490,7 +538,15 @@ return function(log, driver, JSON, deps)
         local ok, result, detail = pcall(driver.perform, entry, session.entries)
         if not ok then return fail(result) end
         if result == 'done' then
-            if session.cursor == cursor and not session.failure then session.issued = now end
+            if session.cursor == cursor and not session.failure then
+                if session.run.source=='action_log' then
+                    session.cursor=session.cursor+1
+                    if entry.kind=='action' then session.done=session.done+1 end
+                    session.consumed=now
+                    session.signature=nil
+                    S.status('Replay '..progress()..' - '..entry.text)
+                else session.issued=now end
+            end
             session.waiting_since = nil
         else
             waiting(detail or 'the game')

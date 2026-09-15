@@ -1,0 +1,47 @@
+Balatro action log | 1789464974-10000000-1
+Run setup: {"deck":"b_red","id":"1789464974-10000000-1","mod_version":"2.0.0","mods":[{"id":"BalatroObserver","version":"2.0.0"},{"id":"Multiplayer","version":"0.5.5"}],"multiplayer":{"gamemode":"gamemode_mp_attrition","is_host":false,"lobby_config":{"cocktail":"111H","gamemode":"gamemode_mp_attrition","ruleset":"ruleset_mp_standard","stake":2},"mod_hash":"Multiplayer-0.5.5","mod_version":"0.5.5","ruleset":"ruleset_mp_standard"},"partial":false,"replay_format":2,"seed":"REPLAY42","stake":2,"started_at":1789464974,"version":"2.0.0"}
+Replay header: {"index_base":1,"recording":{"deck":"b_red","id":"1789464974-10000000-1","mod_version":"2.0.0","mods":[{"id":"BalatroObserver","version":"2.0.0"},{"id":"Multiplayer","version":"0.5.5"}],"multiplayer":{"gamemode":"gamemode_mp_attrition","is_host":false,"lobby_config":{"cocktail":"111H","gamemode":"gamemode_mp_attrition","ruleset":"ruleset_mp_standard","stake":2},"mod_hash":"Multiplayer-0.5.5","mod_version":"0.5.5","ruleset":"ruleset_mp_standard"},"partial":false,"replay_format":2,"seed":"REPLAY42","stake":2,"started_at":1789464974,"version":"2.0.0"},"schema_version":2}
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":2,"instance":1},{"card":"2","index":3,"instance":2}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_before":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"card":"2","index":3,"instance":2}],"ms":0,"n":1,"type":"play"},"cards":{"1":{"edition":{},"key":"c_base","perma_bonus":0,"rank":"Ace","set":"Default","stickers":{},"suit":"Spades"},"2":{"edition":{},"key":"c_base","perma_bonus":0,"rank":"King","set":"Default","stickers":{},"suit":"Spades"}}}
+1. play [hand]: [("Ace of Spades", 2), ("King of Spades", 3)]
+   before action 1 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("King of Spades", 3)]
+Replay record: {"cards":{},"observation":{"after_action":1,"areas":{},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_after":[{"card":"1","index":1,"instance":3}],"hand_boundary":"settled"}}
+   after action 1 | hand: [("Ace of Spades", 1)] | settled
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":2,"instance":1},{"card":"2","index":3,"instance":2}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_before":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"card":"2","index":3,"instance":2}],"ms":1100,"n":2,"type":"discard"},"cards":{}}
+2. discard [hand]: [("Ace of Spades", 2), ("King of Spades", 3)]
+   before action 2 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("King of Spades", 3)]
+Replay record: {"cards":{"3":{"edition":{},"key":"c_base","perma_bonus":0,"rank":"Queen","set":"Default","stickers":{},"suit":"Spades"}},"observation":{"after_action":2,"areas":{},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_after":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"card":"3","index":3,"instance":2}],"hand_boundary":"before_next_action"}}
+   after action 2 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("Queen of Spades", 3)] | before_next_action
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":2,"instance":1},{"card":"3","index":3,"instance":2}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_before":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"card":"3","index":3,"instance":2}],"ms":1100,"n":3,"type":"play"},"cards":{}}
+3. play [hand]: [("Ace of Spades", 2), ("Queen of Spades", 3)]
+   before action 3 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("Queen of Spades", 3)]
+Replay record: {"cards":{},"observation":{"after_action":3,"areas":{},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_after":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"hidden":true,"index":3}],"hand_boundary":"before_next_action"}}
+   after action 3 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("face-down card", 3)] | before_next_action
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":2,"instance":1},{"hidden":true,"index":3}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"hand_before":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"hidden":true,"index":3}],"ms":1100,"n":4,"type":"discard"},"cards":{}}
+4. discard [hand]: [("Ace of Spades", 2), ("face-down card", 3)]
+   before action 4 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("face-down card", 3)]
+Replay record: {"cards":{},"observation":{"after_action":4,"areas":{},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SHOP","round":1},"hand_after":[{"card":"1","index":1,"instance":3},{"card":"1","index":2,"instance":1},{"hidden":true,"index":3}],"hand_boundary":"before_next_action"}}
+   after action 4 | hand: [("Ace of Spades", 1), ("Ace of Spades", 2), ("face-down card", 3)] | before_next_action
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":1,"instance":3}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SHOP","round":1},"ms":1100,"n":5,"targets":[{"card":"1","index":2,"instance":1},{"hidden":true,"index":3}],"type":"buy","use_after_buy":true},"cards":{}}
+5. buy [hand]: [("Ace of Spades", 1)] -> [("Ace of Spades", 2), ("face-down card", 3)] | used immediately
+Replay record: {"action":{"area":"consumeables","cards":[{"card":"1","index":1,"instance":1}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SHOP","round":1},"ms":1100,"n":6,"targets":[{"hidden":true,"index":1}],"type":"use"},"cards":{}}
+6. use [consumeables]: [("Ace of Spades", 1)] -> [("face-down card", 1)]
+Replay record: {"action":{"area":"consumeables","cards":[{"card":"1","index":1,"instance":1}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SHOP","round":1},"ms":1100,"n":7,"type":"sell"},"cards":{}}
+7. sell [consumeables]: [("Ace of Spades", 1)]
+Replay record: {"action":{"area":"shop_jokers","context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SHOP","round":1},"ms":1100,"n":8,"type":"reroll"},"cards":{}}
+8. reroll [shop_jokers]
+Replay record: {"action":{"area":"pack_cards","cards":[{"card":"1","index":1,"instance":3}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SMODS_BOOSTER_OPENED","round":1},"ms":1100,"n":9,"targets":[{"hidden":true,"index":1}],"type":"pack_pick"},"cards":{}}
+9. pack_pick [pack_cards]: [("Ace of Spades", 1)] -> [("face-down card", 1)]
+Replay record: {"action":{"area":"pack_cards","context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SMODS_BOOSTER_OPENED","round":1},"ms":1100,"n":10,"type":"pack_skip"},"cards":{}}
+10. pack_skip [pack_cards]
+Replay record: {"action":{"blind":{"key":"bl_small","slot":"Small"},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"BLIND_SELECT","round":1},"ms":1100,"n":11,"type":"select_blind"},"cards":{}}
+11. select_blind Small bl_small
+Replay record: {"action":{"blind":{"key":"bl_small","slot":"Small","tag":"tag_double"},"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"BLIND_SELECT","round":1},"ms":1100,"n":12,"type":"skip_blind"},"cards":{}}
+12. skip_blind Small bl_small -> tag_double
+Replay record: {"action":{"area":"hand","cards":[{"card":"1","index":1,"instance":1},{"card":"1","index":2,"instance":3},{"hidden":true,"index":3}],"context":{"ante":1,"discards_left":3,"dollars":10,"hands_left":4,"phase":"SELECTING_HAND","round":1},"ms":1100,"n":13,"order":[2,1,3],"type":"reorder"},"cards":{}}
+13. reorder [hand]: [("Ace of Spades", 1), ("Ace of Spades", 2), ("face-down card", 3)] | previous slots=[2,1,3]
+Replay record: {"cards":{"4":{"edition":{},"key":"c_base","perma_bonus":0,"rank":"Ace","seal":"Red","set":"Default","stickers":{},"suit":"Spades"}},"observation":{"after_action":13,"areas":{"hand":[{"card":"4","index":1,"instance":3}]}}}
+   after action 13 | changed [hand]: [("Ace of Spades (seal=Red)", 1)]
+Replay record: {"network":{"action":"enemyLocation","location":"loc_shop-bl_big"},"after_action":13}
+   Multiplayer event: {"action":"enemyLocation","location":"loc_shop-bl_big"}
+Replay record: {"opponent":{"nemesis_location":"Shop","nemesis_location_blind":"bl_big","nemesis_score":"4200"},"after_action":13}
+   Multiplayer after action 13: {"nemesis_location":"Shop","nemesis_location_blind":"bl_big","nemesis_score":"4200"}

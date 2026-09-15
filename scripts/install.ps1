@@ -3,8 +3,8 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $env:APPDATA 'Balatro\Mods\BalatroReplayer'
-$files = 'BalatroReplayer.json', 'main.lua', 'json.lua', 'LICENSE', 'README.md',
-    'replayer/init.lua', 'replayer/log.lua', 'replayer/driver.lua', 'replayer/session.lua', 'replayer/file-picker.lua'
+. (Join-Path $PSScriptRoot 'release-files.ps1')
+$files = $ReplayerReleaseFiles
 
 # A clean copy: files dropped from the list must not linger in the mod folder.
 if (Test-Path $target) { Remove-Item -Recurse -Force $target }

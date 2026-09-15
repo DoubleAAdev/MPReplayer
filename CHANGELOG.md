@@ -1,3 +1,11 @@
+# 2.0.0
+
+- Load Action Recorder text exports and JSONL journals, retaining Lovely-log support.
+- Start single-player seed/deck/stake runs and recreate Multiplayer lobbies with recorded opponent events.
+- Validate physical cards and settled hands; preserve exact purchases, targets and sorting.
+- Acknowledge action-log callbacks once without depending on Multiplayer RLOG hooks.
+- Accept .txt/.jsonl files in the picker and drag/drop; reject incomplete setup, resumed runs and unsupported inputs clearly.
+
 # 1.3.0
 
 - Keep a replay out of the Lovely log entirely. From Start Replay until the game is back at the main menu, every line Multiplayer logs is dropped: the manifest it wrote at the start of each replayed run, the money, the opponent's messages handed back to it, its status lines. A replay's log used to open with a manifest like a real game's, which is how an old replay of a game came to look like a second game. Other mods' lines are unaffected.
