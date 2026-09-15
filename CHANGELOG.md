@@ -1,3 +1,9 @@
+# 2.0.4
+
+- Wait for played/discarded hands, redraws, and queued effects to finish after the input is acknowledged.
+- Hold subsequent opponent messages and actions until completion, preventing round-end messages from interrupting the hand. Stop with a source-line diagnostic if resolution stalls.
+- Regression coverage verifies each hand input runs once and pending effects complete before the next message or action.
+
 # 2.0.3
 
 - Restore the pre-v2.0 Replayer implementation from v1.3.0: load original Multiplayer Lovely logs and replay through the recorded lobby.

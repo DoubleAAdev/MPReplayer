@@ -358,3 +358,78 @@ assert(session.phase == 'idle' and MP.LOBBY.code == nil)
 assert(#lovely == 0, 'the replay wrote to the Lovely log: ' .. tostring(lovely[1]))
 
 print('PASS: action filter, lobby emulation, refused starts, run start checks, delivery order, settling, ante keys ignored, PvP blinds, pauses, stops on any mismatch, refusal or stall, a quiet Lovely log, and cleanup')
+
+
+-- A discard acknowledgement is not completion: preserve redraw and Tarot
+-- creation before round-ending messages and the following sell/use inputs.
+local discard_calls, sell_calls = 0, 0
+session.runs[1].entries = {
+ {kind='action',op='discard',args={'1.2.3.6.8'},text='discard 1.2.3.6.8',seq=277,line=1658},
+ {kind='message',action='endPvP',fields={action='endPvP',lost=false},line=1670},
+ {kind='action',op='sell',args={'5','1'},text='sell 5 1',seq=278,line=1668},
+}
+session.runs[1].actions=2
+driver.state_name=function() return G.STATE==2 and 'DRAW_TO_HAND' or 'SELECTING_HAND' end
+driver.perform=function(entry)
+ if entry.op=='discard' then
+  discard_calls=discard_calls+1
+  G.STATE=2
+  G.E_MANAGER.queues.base={{blocking=true,complete=false}}
+  MP.RLOG.record('discard',{{1,2,3,6,8}})
+ elseif entry.op=='sell' then
+  assert(G.priestess_created,'The discard effect must finish before selling')
+  sell_calls=sell_calls+1;MP.RLOG.record('sell',{5,1})
+ end
+ return 'done'
+end
+begin()
+for i=1,4 do now=now+1;session.update(.1) end
+assert(discard_calls==1 and sell_calls==0 and #channel.items==0)
+-- State can change before the pending card-creation event is processed.
+G.STATE=1
+now=now+1;session.update(.1)
+assert(sell_calls==0 and #channel.items==0)
+G.priestess_created=true;G.E_MANAGER.queues.base={}
+now=now+1;session.update(.1)
+assert(#channel.items==1 and sent_last().action=='endPvP')
+for i=1,4 do now=now+1;session.update(.1) end
+assert(discard_calls==1 and sell_calls==1 and session.phase=='finished',session.text)
+session.on_main_menu()
+print('PASS: discard runs once and completes redraw/effects before network delivery or the next input')
+
+-- A play acknowledgement is not completion: preserve redraw and Tarot
+-- creation before round-ending messages and the following sell/use inputs.
+local play_calls, sell_calls = 0, 0
+session.runs[1].entries = {
+ {kind='action',op='play',args={'1.2.3.6.8'},text='play 1.2.3.6.8',seq=277,line=1658},
+ {kind='message',action='endPvP',fields={action='endPvP',lost=false},line=1670},
+ {kind='action',op='sell',args={'5','1'},text='sell 5 1',seq=278,line=1668},
+}
+session.runs[1].actions=2
+driver.state_name=function() return G.STATE==2 and 'HAND_PLAYED' or 'SELECTING_HAND' end
+driver.perform=function(entry)
+ if entry.op=='play' then
+  play_calls=play_calls+1
+  G.STATE=2
+  G.E_MANAGER.queues.base={{blocking=true,complete=false}}
+  MP.RLOG.record('play',{{1,2,3,6,8}})
+ elseif entry.op=='sell' then
+  assert(G.priestess_created,'The play effect must finish before selling')
+  sell_calls=sell_calls+1;MP.RLOG.record('sell',{5,1})
+ end
+ return 'done'
+end
+begin()
+for i=1,4 do now=now+1;session.update(.1) end
+assert(play_calls==1 and sell_calls==0 and #channel.items==0)
+-- State can change before the pending card-creation event is processed.
+G.STATE=1
+now=now+1;session.update(.1)
+assert(sell_calls==0 and #channel.items==0)
+G.priestess_created=true;G.E_MANAGER.queues.base={}
+now=now+1;session.update(.1)
+assert(#channel.items==1 and sent_last().action=='endPvP')
+for i=1,4 do now=now+1;session.update(.1) end
+assert(play_calls==1 and sell_calls==1 and session.phase=='finished',session.text)
+session.on_main_menu()
+print('PASS: play runs once and completes redraw/effects before network delivery or the next input')

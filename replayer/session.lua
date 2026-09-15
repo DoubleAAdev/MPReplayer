@@ -121,6 +121,9 @@ return function(log, driver, JSON, deps)
             session.done = session.done + 1
             session.issued, session.waiting_since = nil, nil
             session.consumed = clock()
+            if op == 'play' or op == 'discard' then
+                session.hand_pending = {op = op, line = entry.line, began = clock()}
+            end
             -- Multiplayer passes the mirrored payload with its "action:" prefix.
             local mirrored = human and tostring(human):gsub('^action:', '') or nil
             S.status('Replay ' .. progress() .. ' - ' .. actual .. (mirrored and (' - ' .. mirrored) or ''))
@@ -454,6 +457,23 @@ return function(log, driver, JSON, deps)
         -- A recording that was running must not go missing halfway through.
         local rec = recorder()
         if session.recording and not (rec and rec.ok) then return fail('Action Recorder stopped writing') end
+        -- RLOG acknowledges the input before scoring/discard animations and their
+        -- triggered effects finish. Do not deliver round-ending messages or issue
+        -- another input while that hand operation is still resolving.
+        if session.hand_pending then
+            if paused() then session.hand_pending.began = now; return end
+            local state = driver.state_name()
+            local resolving = state == 'HAND_PLAYED' or state == 'DRAW_TO_HAND' or state == 'DISCARD'
+                or state == 'NEW_ROUND' or (G.play and G.play.cards and #G.play.cards > 0)
+            if resolving or busy() or now - (session.consumed or 0) < SETTLE then
+                if now - session.hand_pending.began > STALL then
+                    return fail(session.hand_pending.op .. ' at log line ' .. tostring(session.hand_pending.line)
+                        .. ' did not finish resolving; no following input was issued')
+                end
+                return
+            end
+            session.hand_pending = nil
+        end
         local entry = session.entries[session.cursor]
         if not entry then return finish() end
         if entry.kind == 'message' then

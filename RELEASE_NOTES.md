@@ -1,5 +1,7 @@
-# Balatro Replayer 2.0.3
+# Balatro Replayer 2.0.4
 
-Restores the v1.3.0 Replayer behavior. Use Load Log with the original Multiplayer Lovely log, select a run, then Start Replay from the main menu. Action Recorder exports are no longer accepted.
+Fix replay advancing after a play/discard callback while the hand is still resolving. Subsequent network messages and inputs now wait for scoring, redraws, and queued effects. Original Lovely-log loading is unchanged.
 
-Only Replayer changes; Observer and Action Recorder are unchanged. Restart Balatro after installing.
+Restart Balatro and replay the log from the beginning; an already-diverged run cannot be repaired by this update.
+
+Validation: five Lua suites, including play/discard completion regressions. Full in-game replay of the supplied log remains unverified.
