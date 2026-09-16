@@ -67,6 +67,7 @@ return function(mod, JSON)
     G.FUNCS.brpl_start_listed = function(e)
         protect(function() session.start_listed(e.config.ref_table) end)
         guard().update()
+        if session.phase == 'idle' and G.OVERLAY_MENU then show_replays() end
     end
     G.FUNCS.brpl_remove = function()
         protect(session.remove_run)
@@ -219,7 +220,9 @@ return function(mod, JSON)
                 rows[#rows + 1] = row('log_position', 0.3)
                 rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
             end
-            for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do rows[#rows + 1] = row(field, 0.28) end
+            for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do
+                if session[field] ~= '' then rows[#rows + 1] = row(field, 0.28) end
+            end
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
     end

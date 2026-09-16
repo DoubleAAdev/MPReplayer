@@ -233,7 +233,7 @@ return function(log, driver, JSON, deps)
     function S.load(text, source)
         assert(S.phase == 'idle', 'Finish the current replay before loading another log')
         local imported = log.parse(text) -- Parse before mutating the existing list.
-        S.runs, S.log_runs = S.runs or {}, S.log_runs or {}
+        S.runs, S.log_runs = {}, {}
         local first = #S.runs + 1
         local first_log = #S.log_runs + 1
         local filename = short(tostring(source or 'Loaded log'):gsub('\\', '/'):match('[^/]+$'), 40)
@@ -243,8 +243,8 @@ return function(log, driver, JSON, deps)
             S.runs[#S.runs + 1] = run
             S.log_runs[#S.log_runs + 1] = run
         end
-        S.log_imports = (S.log_imports or 0) + 1
-        S.log_source = S.log_imports == 1 and filename or (S.log_imports .. ' logs loaded')
+        S.log_imports = 1
+        S.log_source = filename
         S.log_page_index = math.floor((first_log - 1) / 3) + 1
         S.log_page()
         S.index = first
