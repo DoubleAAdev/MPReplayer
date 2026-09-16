@@ -1,3 +1,9 @@
+## 2.2.1
+
+- Restore Saturn, Settings, Mods, Stats, Collection, Customize Deck, and Lobby Info access during replays.
+- Allow active menu controls, including submenu navigation, toggles, sliders, text fields, and scrolling, while keeping background gameplay and card reordering locked.
+- Preserve End Replay and the two-press mismatch confirmation.
+
 ## 2.2.0
 
 - Lock player gameplay input during replay playback, including mouse/touch card dragging, joker and consumable reordering, sorting, selection, use/sell/buy actions, keyboard shortcuts, and gamepad reordering.

@@ -25,6 +25,7 @@ UIBox_button_custom = UIBox_button
 load_function('create_UIBox_generic_options')
 load_function('create_UIBox_options')
 local session = {phase = 'running'}
+UIElement = {click = function(self) return self.config.button end}
 local guard = dofile('replayer/input-guard.lua')(session)
 local function collect(node, out)
     out = out or {}
@@ -38,6 +39,17 @@ local transformed = guard.rewrite(create_UIBox_options())
 local after = collect(transformed)
 assert(after.brpl_end == 1 and not after.lobby_leave and not after.mp_return_to_lobby and not after.mp_unstuck)
 assert(after.exit_overlay_menu == 1, 'the pause menu must still close')
+G.OVERLAY_MENU = {}
+local function check_clicks(node)
+    if node.config and node.config.button then
+        node.UIBox = G.OVERLAY_MENU
+        assert(UIElement.click(node) == node.config.button, 'pause button blocked: ' .. node.config.button)
+    end
+    for _, child in pairs(node.nodes or {}) do check_clicks(child) end
+end
+check_clicks(transformed)
+G.OVERLAY_MENU = nil
+assert(UIElement.click({config = {button = 'lobby_info'}}) == 'lobby_info')
 local function find_end(node)
     if node.config and node.config.button == 'brpl_end' then return node end
     for _, child in pairs(node.nodes or {}) do local found = find_end(child); if found then return found end end

@@ -6,17 +6,38 @@ return function(session)
     M.active = active
     local safe_buttons = {
         options = true, exit_overlay_menu = true, brpl_end = true,
-        run_info = true, deck_info = true, change_tab = true,
+        run_info = true, deck_info = true, change_tab = true, lobby_info = true,
+        saturn_config = true, settings = true, mods_button = true,
+        high_scores = true, your_collection = true, customize_deck = true,
         brpl_mod_prev = true, brpl_mod_next = true,
     }
     local exits = {mp_return_to_lobby = true, lobby_leave = true}
     local function is_card(node)
         return node and Card and (getmetatable(node) == Card or (node.is and node:is(Card)))
     end
+    local gameplay_buttons = {
+        play_cards_from_highlighted = true, discard_cards_from_highlighted = true,
+        use_card = true, sell_card = true, buy_from_shop = true, buy_and_use = true,
+        reroll_shop = true, skip_booster = true, select_blind = true, skip_blind = true,
+        mp_toggle_ready = true, sort_hand_value = true, sort_hand_suit = true,
+        cash_out = true, toggle_shop = true, start_setup_run = true, setup_run = true,
+        start_run = true, go_to_menu = true, mp_unstuck = true, mp_unstuck_blind = true,
+        mp_unstuck_arcana = true, lobby_leave = true, mp_return_to_lobby = true,
+        lobby_choose_deck = true, brpl_start = true, brpl_load = true, brpl_next = true,
+    }
+    local function in_overlay(node)
+        return G.OVERLAY_MENU ~= nil and node and node.UIBox == G.OVERLAY_MENU and not node.under_overlay
+    end
+    local function editing_text(controller)
+        return controller and in_overlay(controller.text_input_hook)
+    end
     local function safe_node(node)
         if not node or is_card(node) then return false end
         local config = node.config or {}
-        return safe_buttons[config.button] == true
+        if gameplay_buttons[config.button] then return false end
+        -- Overlay ownership admits settings, mod pages, tabs, toggles, sliders,
+        -- and their navigation without admitting the gameplay UI behind them.
+        return safe_buttons[config.button] == true or in_overlay(node)
     end
     local function hook(object, name, wrapper)
         if object and type(object[name]) == 'function' then
@@ -75,7 +96,7 @@ return function(session)
         return original(self, ...)
     end)
     hook(Controller, 'key_press_update', function(original, self, key, ...)
-        if active() and key ~= 'escape' then return end
+        if active() and key ~= 'escape' and not editing_text(self) then return end
         return original(self, key, ...)
     end)
     for _, name in ipairs({'key_hold_update', 'key_release_update'}) do
@@ -89,7 +110,7 @@ return function(session)
     -- shortcut mods that may execute an action before the normal input handler.
     hook(love, 'keypressed', function(original, key, ...)
         if not active() then return original(key, ...) end
-        if key == 'escape' then G.CONTROLLER:key_press(key) end
+        if key == 'escape' or editing_text(G.CONTROLLER) then G.CONTROLLER:key_press(key) end
     end)
     hook(love, 'keyreleased', function(original, key, ...)
         if not active() then return original(key, ...) end
@@ -105,7 +126,7 @@ return function(session)
         if button == 1 then G.CONTROLLER:L_cursor_release(x, y) end
     end)
     hook(love, 'wheelmoved', function(original, ...)
-        if active() then return end
+        if active() and not G.OVERLAY_MENU then return end
         return original(...)
     end)
     for _, event in ipairs({'pressed', 'released'}) do

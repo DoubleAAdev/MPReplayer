@@ -27,7 +27,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 
 **End Replay** replaces **Leave Lobby** and **Return to Lobby** during playback and is also available in the Replayer config. Pausing or opening a menu only pauses the replay.
 
-Replays are read-only until you end them: mouse/touch card dragging, card selection, sorting, playing/discarding, purchases, sales, consumable use, and keyboard/gamepad gameplay shortcuts are blocked. Hover inspection, run/deck information, and the pause menu remain available. The lock also applies when playback has completed or stopped on a mismatch, so manual input cannot alter the displayed result. Logged replay actions and game effects continue normally.
+Replays are read-only until you end them: mouse/touch card dragging, card selection, sorting, playing/discarding, purchases, sales, consumable use, and keyboard/gamepad gameplay shortcuts are blocked. Hover inspection, run/deck information, Lobby Info, and all pause-menu entries remain available, including Saturn, Settings, Mods, Stats, Collection, and Customize Deck. Submenu buttons, toggles, sliders, text fields, and scrolling work while the replay is paused. The lock also applies when playback has completed or stopped on a mismatch, so manual input cannot alter the displayed result. Logged replay actions and game effects continue normally.
 
 ## What is executed
 

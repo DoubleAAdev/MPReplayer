@@ -89,6 +89,40 @@ assert(count('pad_press_start') == 1 and count('pad_release_start') == 1)
 for _, name in ipairs({'options', 'exit_overlay_menu', 'brpl_end', 'run_info', 'deck_info', 'change_tab'}) do
     assert(UIElement.click({config = {button = name}}) == name)
 end
+-- Every requested menu entry and Lobby Info works outside an overlay too.
+for _, name in ipairs({'saturn_config', 'settings', 'mods_button', 'high_scores', 'your_collection', 'customize_deck', 'lobby_info'}) do
+    G.FUNCS[name] = function() return hit(name) end
+    assert(UIElement.click({config = {button = name}}) == name)
+end
+-- Submenus are permitted by ownership, including controls without a button.
+G.OVERLAY_MENU = {}
+G.FUNCS.mod_setting_toggle = function() return hit('mod_setting_toggle') end
+local setting = {UIBox = G.OVERLAY_MENU, config = {button = 'mod_setting_toggle'}}
+assert(UIElement.click(setting) == 'mod_setting_toggle')
+controller.hovering.target, controller.cursor_hover.target = setting, setting
+local presses = count('press')
+controller:L_cursor_press(); assert(count('press') == presses + 1)
+controller.focused.target = {UIBox = G.OVERLAY_MENU, config = {focus_args = {type = 'slider'}}}
+assert(controller:capture_focused_input('dpright', 'press', 0.1) == true)
+controller.text_input_hook = {UIBox = G.OVERLAY_MENU}
+love.keypressed('a'); assert(controller.pressed_keys.a)
+controller:key_press_update('a'); assert(count('key_a') == 1)
+controller.text_input_hook = nil
+love.wheelmoved(0, 1); assert(count('shortcut_wheelmoved') == 1)
+-- An open menu must not unlock background actions or gameplay callbacks.
+for _, name in ipairs(gameplay) do
+    UIElement.click({UIBox = G.OVERLAY_MENU, config = {button = name}})
+    assert(count(name) == 0, name .. ' escaped the gameplay lock')
+end
+UIElement.click({UIBox = {}, config = {button = 'mod_setting_toggle'}})
+UIElement.click({UIBox = G.OVERLAY_MENU, under_overlay = true, config = {button = 'mod_setting_toggle'}})
+assert(count('mod_setting_toggle') == 1)
+local first = hand.cards[1]
+first:drag(); first:click(); assert(hand.cards[1] == first and not first.selected)
+G.OVERLAY_MENU = nil
+UIElement.click(setting); assert(count('mod_setting_toggle') == 1, 'closed menus cannot grant access')
+controller:key_press_update('r'); assert(count('key_r') == 0)
+
 -- The same callbacks issued by the driver, and deferred effects, remain usable.
 for _, name in ipairs(gameplay) do assert(G.FUNCS[name]({config = {}}) == name) end
 local function button(name)
