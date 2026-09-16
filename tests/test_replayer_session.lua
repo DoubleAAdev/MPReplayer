@@ -539,7 +539,7 @@ driver.perform=function(entry)
  if entry.op=='play' then
   MP.RLOG.record('play',{{2,3,5,6,7}})
   G.GAME.current_round={hands_left=0}
-  G.hand={cards={1,2,3,4,5}};G.play={cards={1}}
+  G.hand={cards={1,2,3,4,5}};G.play={cards={1,2,3,4,5}}
   G.E_MANAGER.queues.base={{blocking=true,complete=false}}
  else
   assert(#G.hand.cards==5,'the reorder must happen before the hand empties')
@@ -558,6 +558,40 @@ assert(#channel.items>=1 and sent_last().action=='endPvP',session.text)
 assert(reorder_calls==1)
 session.on_main_menu()
 print('PASS: a hand reorder logged during last-hand scoring does not deadlock endPvP')
+
+-- Right after a play is recorded its cards are still in the hand. A drag of
+-- the refilled hand names as many cards, but must wait for the redraw.
+local early_drags=0
+session.runs[1].entries={
+ {kind='action',op='play',args={'1.6.7.8'},text='play 1.6.7.8',seq=238,line=5496},
+ {kind='action',op='reorder',args={'6','1.2.4.5.6.7.8.3'},text='reorder 6 1.2.4.5.6.7.8.3',seq=239,line=5499},
+}
+session.runs[1].actions=2
+driver.state_name=function() return G.STATE==2 and 'HAND_PLAYED' or 'SELECTING_HAND' end
+driver.perform=function(entry)
+ if entry.op=='play' then
+  MP.RLOG.record('play',{{1,6,7,8}})
+  G.STATE=2;G.GAME.current_round={hands_left=3}
+  G.hand={cards={1,2,3,4,5,6,7,8}};G.play={cards={}}
+  G.E_MANAGER.queues.base={{blocking=true,complete=false}}
+ else
+  if #G.hand.cards~=8 then return 'wait','the hand holds '..#G.hand.cards end
+  if G.STATE==2 then early_drags=early_drags+1 end
+  MP.RLOG.record('reorder',{6,{1,2,4,5,6,7,8,3}})
+ end
+ return 'done'
+end
+begin()
+for i=1,3 do now=now+1;session.update(.1) end
+assert(early_drags==0,'no reorder while the played cards are still in the hand')
+G.hand={cards={1,2,3,4}};G.play={cards={1,2,3,4}}
+for i=1,2 do now=now+1;session.update(.1) end
+G.STATE=1;G.hand={cards={1,2,3,4,5,6,7,8}};G.play={cards={}};G.E_MANAGER.queues.base={}
+for i=1,4 do now=now+1;session.update(.1) end
+assert(early_drags==0 and session.phase=='finished',session.text)
+session.on_main_menu()
+driver.state_name=function() return 'HAND_PLAYED' end
+print('PASS: a drag of the refilled hand waits until the played cards leave and the hand is redrawn')
 
 -- A reorder after a discard waits for the redraw to settle, as before.
 local drag_calls=0
@@ -588,7 +622,6 @@ session.on_main_menu()
 driver.state_name=function() return 'HAND_PLAYED' end
 print('PASS: a reorder after a discard waits for the redraw')
 
-assert(writes['mp_replayer/status.json']:find('"dollars":"128 discard 1.5.6.7.10 $nil; 129 reorder',1,true),'status.json lists money after each action')
 
 -- The replay's Idol deck counts must match the log's round by round; the
 -- first round that differs stops the replay and names the cards.

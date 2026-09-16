@@ -23,7 +23,7 @@ return function(session, mod, JSON)
             if index == snapshot.cursor then current_line = #result + 1 end
             local marker = index < snapshot.cursor and 'DONE' or index == snapshot.cursor and 'NEXT' or 'WAIT'
             if index == snapshot.cursor and snapshot.issued then marker = 'SENT' end
-            local detail = entry.kind == 'action' and ('Action ' .. tostring(entry.seq) .. ': ' .. entry.text .. (entry.dollars and (' $' .. entry.dollars) or ''))
+            local detail = entry.kind == 'action' and ('Action ' .. tostring(entry.seq) .. ': ' .. entry.text)
                 or ('Event: ' .. tostring(entry.action) .. ' ' .. JSON.encode(entry.fields or {}))
             add(marker .. ' | line ' .. tostring(entry.line or '?') .. ' | ' .. detail)
         end

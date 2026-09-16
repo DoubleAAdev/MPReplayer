@@ -37,19 +37,6 @@ return function(log, driver, JSON, deps)
         local state = {phase = S.phase, status = S.text, step = session and session.done or 0,
             total = session and session.run.actions or 0, recording = recorder() and recorder().path or nil}
         if session and session.failure then state.failure = session.failure end
-        -- Money after each action, to find where a replay's economy left the log's.
-        if session then
-            local trail = {}
-            for _, entry in ipairs(session.entries) do
-                if entry.dollars then trail[#trail + 1] = tostring(entry.seq) .. ' ' .. entry.text .. ' $' .. entry.dollars end
-            end
-            state.dollars = table.concat(trail, '; ')
-            local hands = {}
-            for _, entry in ipairs(session.entries) do
-                if entry.hand then hands[#hands + 1] = tostring(entry.seq) .. ' ' .. entry.text .. ' | ' .. entry.hand end
-            end
-            state.hands = table.concat(hands, '; ')
-        end
         pcall(function()
             love.filesystem.createDirectory(directory)
             love.filesystem.write(directory .. '/status.json', JSON.encode(state))
@@ -98,22 +85,6 @@ return function(log, driver, JSON, deps)
         S.status('Replay stopped' .. where .. ': ' .. clean(message) .. ' - ' .. progress() .. ' actions done, the run is left open')
     end
     S.fail = fail
-
-    -- The hand as the replay sees it before an input: rank, suit and any
-    -- enhancement or seal, left to right.
-    local function hand_text()
-        local cards = G.hand and G.hand.cards
-        if not cards or #cards == 0 then return nil end
-        local out = {}
-        for i, card in ipairs(cards) do
-            if type(card) ~= 'table' then return nil end
-            local base = card.base or {}
-            local key = ((card.config or {}).center or {}).key
-            out[i] = tostring(base.value) .. tostring(base.suit):sub(1, 1)
-                .. (key and key ~= 'c_base' and ('/' .. key:gsub('^m_', '')) or '') .. (card.seal and ('/' .. card.seal) or '')
-        end
-        return table.concat(out, ' ')
-    end
 
     -- Multiplayer prints each round's deck counts as IDOL_ROLL. A replay whose
     -- deck no longer matches the log's stops at that round, not rounds later.
@@ -173,13 +144,13 @@ return function(log, driver, JSON, deps)
         local argstr = format_args(args)
         local actual = op .. (argstr ~= '' and (' ' .. argstr) or '')
         if entry and entry.kind == 'action' and actual == entry.text then
-            entry.dollars = tostring((G.GAME or {}).dollars)
             session.cursor = session.cursor + 1
             session.done = session.done + 1
             session.issued, session.waiting_since = nil, nil
             session.consumed = clock()
             if op == 'play' or op == 'discard' then
-                session.hand_pending = {op = op, line = entry.line, began = clock()}
+                local cards = type(args) == 'table' and type(args[1]) == 'table' and #args[1] or 0
+                session.hand_pending = {op = op, line = entry.line, began = clock(), cards = cards}
             end
             -- Multiplayer passes the mirrored payload with its "action:" prefix.
             local mirrored = human and tostring(human):gsub('^action:', '') or nil
@@ -741,11 +712,13 @@ return function(log, driver, JSON, deps)
                 -- scoring settles, and endPvP waits behind the reorder. Only while
                 -- scoring: during a draw the hand's size changes, and Multiplayer
                 -- ignores a reorder that lands on the same frame as a size change.
+                -- And only once every played card has reached the play area: until
+                -- then the hand can still hold as many cards as the drag names.
                 local next_entry = session.entries[session.cursor]
                 if next_entry and next_entry.op == 'reorder' and not session.issued
-                    and session.hand_pending.op == 'play' and state == 'HAND_PLAYED' then
+                    and session.hand_pending.op == 'play' and state == 'HAND_PLAYED'
+                    and G.play and G.play.cards and #G.play.cards >= session.hand_pending.cards then
                     local cursor = session.cursor
-                    next_entry.hand = hand_text()
                     local ok, result = pcall(driver.perform, next_entry, session.entries)
                     if ok and result == 'done' and session.cursor == cursor and not session.failure then session.issued = now end
                 end
@@ -790,7 +763,6 @@ return function(log, driver, JSON, deps)
         -- Most callbacks write their MP_RLOG line before returning, so the
         -- cursor may already have moved on by the time perform comes back.
         local cursor = session.cursor
-        entry.hand = hand_text()
         local ok, result, detail = pcall(driver.perform, entry, session.entries)
         if not ok then return fail(result) end
         if result == 'done' then

@@ -272,7 +272,7 @@ assert(stop_calls == 1, 'End Replay is harmless outside replays')
 session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')
 
--- Fast forward: arrows above the deck step 1x..512x, and each frame runs
+-- Fast forward: arrows above the deck step 1x..512x, wrapping, and each frame runs
 -- that many game updates while the replay runs.
 local boxes, updates = {}, 0
 function UIBox(args)
@@ -290,20 +290,22 @@ local row = boxes[1].args.definition.nodes
 local label = row[2].nodes[1].config.ref_table
 assert(label.label == '1x' and row[1].config.button == 'mprpl_speed_down' and row[3].config.button == 'mprpl_speed_up')
 G.FUNCS.mprpl_speed_down()
-assert(label.label == '1x', '1x is the lowest speed')
+assert(label.label == '512x', 'below 1x wraps to 512x')
+G.FUNCS.mprpl_speed_up()
+assert(label.label == '1x', 'above 512x wraps to 1x')
 for _ = 1, 3 do G.FUNCS.mprpl_speed_up() end
 assert(label.label == '8x')
 Game:update(0.016)
 assert(updates == 9, 'an 8x frame runs eight updates: ' .. updates)
-for _ = 1, 7 do G.FUNCS.mprpl_speed_up() end
-assert(label.label == '512x', '512x is the highest speed')
+for _ = 1, 6 do G.FUNCS.mprpl_speed_up() end
+assert(label.label == '512x')
 G.FUNCS.mprpl_speed_down()
 assert(label.label == '256x')
 session.phase = 'idle'
 Game:update(0.016)
 assert(boxes[1].REMOVED and label.value == 1 and updates == 10, 'the button leaves with the replay and speed resets')
 session.update, G.STAGE, G.deck = real_update, G.STAGES.MAIN_MENU, nil
-print('PASS: fast forward arrows step 1x to 512x and each frame runs that many updates')
+print('PASS: fast forward arrows step and wrap between 1x and 512x, and each frame runs that many updates')
 
 assert(#mod.extra_tabs() == 1)
 session.phase = 'failed'
