@@ -635,6 +635,9 @@ session.runs[1].idols = {{payload='A', line=12}, {payload='A', line=22}}
 session.runs[1].actions = 2
 driver.perform = function() return 'wait', 'held' end
 begin()
+sendDebugMessage('IDOL_ROLL::B', 'IdolAlgo')
+assert(session.phase == 'running', 'a roll from starting the game is not a round end')
+MP.RLOG.record('reroll', nil)
 sendDebugMessage('IDOL_ROLL::A', 'IdolAlgo')
 assert(session.phase == 'running', 'a matching round passes')
 sendDebugMessage('IDOL_ROLL::B', 'IdolAlgo')

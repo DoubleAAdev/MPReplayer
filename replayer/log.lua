@@ -182,8 +182,10 @@ return function(decode)
                 local idol = not human and line:match(':: IdolAlgo :: IDOL_ROLL::(%S+)')
                 if idol then
                     -- The deck's rank and suit counts at each round's end: the
-                    -- replay's own roll must print the same text.
-                    if run then run.idols[#run.idols + 1] = {payload = idol, line = number} end
+                    -- replay's own roll must print the same text. Rolls before
+                    -- the first action belong to starting a game, and a game
+                    -- started twice prints the abandoned start's roll late.
+                    if run and run.actions > 0 then run.idols[#run.idols + 1] = {payload = idol, line = number} end
                 elseif started then
                     replaying = started
                 elseif line:find(':: MULTIPLAYER :: Client sent message: {"location":"loc_shop', 1, true) then

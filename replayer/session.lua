@@ -95,7 +95,7 @@ return function(log, driver, JSON, deps)
         return counts
     end
     local function check_idol(message)
-        local payload = session and (S.phase == 'running' or S.phase == 'starting') and tostring(message):match('^IDOL_ROLL::(%S+)')
+        local payload = session and S.phase == 'running' and session.done > 0 and tostring(message):match('^IDOL_ROLL::(%S+)')
         if not payload then return end
         session.idol = (session.idol or 0) + 1
         local expected = (session.run.idols or {})[session.idol]
