@@ -272,6 +272,37 @@ assert(stop_calls == 1, 'End Replay is harmless outside replays')
 session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')
 
+-- Fast forward: a button above the deck cycles 1x..512x, and each frame runs
+-- that many game updates while the replay runs.
+local boxes, updates = {}, 0
+function UIBox(args)
+    local box = {args = args, remove = function(self) self.REMOVED = true end}
+    boxes[#boxes + 1] = box
+    return box
+end
+local real_update = session.update
+session.update = function() updates = updates + 1 end
+G.STAGE, G.deck = G.STAGES.RUN, {}
+session.phase = 'running'
+Game:update(0.016)
+assert(#boxes == 1 and boxes[1].args.config.major == G.deck and updates == 1)
+local label = boxes[1].args.definition.nodes[1].nodes[1].config.ref_table
+assert(label.label == '1x' and boxes[1].args.definition.nodes[1].config.button == 'mprpl_speed')
+for _ = 1, 3 do G.FUNCS.mprpl_speed() end
+assert(label.label == '8x')
+Game:update(0.016)
+assert(updates == 9, 'an 8x frame runs eight updates: ' .. updates)
+for _ = 1, 6 do G.FUNCS.mprpl_speed() end
+assert(label.label == '512x')
+G.FUNCS.mprpl_speed()
+assert(label.label == '1x', '512x wraps back to 1x')
+G.FUNCS.mprpl_speed()
+session.phase = 'idle'
+Game:update(0.016)
+assert(boxes[1].REMOVED and label.value == 1 and updates == 10, 'the button leaves with the replay and speed resets')
+session.update, G.STAGE, G.deck = real_update, G.STAGES.MAIN_MENU, nil
+print('PASS: fast forward button cycles 1x to 512x and runs that many updates per frame')
+
 assert(#mod.extra_tabs() == 1)
 session.phase = 'failed'
 assert(#mod.extra_tabs() == 1 and mod.extra_tabs()[1].label == 'Debug')

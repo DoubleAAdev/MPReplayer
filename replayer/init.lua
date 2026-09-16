@@ -6,8 +6,10 @@ return function(mod, JSON)
     local json = require('json')
     local log = load('log.lua')(json.decode)
     local driver = load('driver.lua')(log)
+    -- Game time, so the replay's settle and stall timers follow fast forward.
+    local game_time = 0
     local session = load('session.lua')(log, driver, JSON, {
-        clock = function() return love.timer.getTime() end,
+        clock = function() return game_time end,
         channel = function(name) return love.thread.getChannel(name) end,
         encode = json.encode,
     })
@@ -185,12 +187,58 @@ return function(mod, JSON)
     end
 
     local function pack(...) return {n = select('#', ...), ...} end
+    -- Fast forward: a button above the deck doubles the speed up to 512x,
+    -- then returns to 1x. Balatro starts at most one blocking event per
+    -- update, so speed comes from more updates per frame, not a bigger dt.
+    local speed = {value = 1, label = '1x'}
+    local speed_box, speed_deck
+    local update_cost = 0.001
+    G.FUNCS.mprpl_speed = function()
+        speed.value = speed.value >= 512 and 1 or speed.value * 2
+        speed.label = speed.value .. 'x'
+    end
+    local function sync_speed_button()
+        local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
+        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED) then
+            if not speed_box.REMOVED then speed_box:remove() end
+            speed_box, speed_deck = nil, nil
+        end
+        if not show then
+            speed.value, speed.label = 1, '1x'
+        elseif not speed_box then
+            speed_deck = G.deck
+            speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
+                {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed', colour = G.C.ORANGE, r = 0.1,
+                    minw = 1.4, minh = 0.6, padding = 0.05, hover = true, shadow = true}, nodes = {
+                    {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.45, colour = G.C.WHITE, shadow = true}}}}}},
+                config = {align = 'tm', offset = {x = 0, y = -0.1}, major = G.deck, bond = 'Weak'}}
+        end
+    end
+
     local previous_update = Game.update
-    function Game:update(dt)
+    local function step(self, dt)
+        game_time = game_time + dt
         guard().update()
         local result = pack(previous_update(self, dt))
         protect(function() session.update(dt) end, true)
         protect(function() end_screen.update() end, true)
+        return result
+    end
+    function Game:update(dt)
+        protect(sync_speed_button)
+        if speed.value == 1 or session.phase ~= 'running' then
+            local result = step(self, dt)
+            return unpack(result, 1, result.n)
+        end
+        -- ponytail: 50 ms of updates per frame; on a slow CPU the real speed
+        -- stays below the label at the top settings.
+        local count = math.max(1, math.min(speed.value, math.floor(0.05 / update_cost)))
+        local sub_dt = math.min(dt * speed.value / count, 0.05)
+        local started, result, done = love.timer.getTime(), nil, 0
+        repeat
+            result, done = step(self, sub_dt), done + 1
+        until done >= count or session.phase ~= 'running'
+        update_cost = math.max((love.timer.getTime() - started) / done, 0.0001)
         return unpack(result, 1, result.n)
     end
     local previous_start = Game.start_run

@@ -155,7 +155,6 @@ return function(log)
         if not paid then return 'refused', 'the log shows no payment, so the game refused the click' end
         if not (card.ability or {}).consumeable then return 'buy', 'not a consumable' end
         if #money > (cost > 0 and 1 or 0) then return 'buy_and_use', 'money moved right after the purchase' end
-        if #money == 0 and cost == 0 then return 'buy', 'a free card with no other effect' end
         if card.can_use_consumeable and not card:can_use_consumeable() then return 'buy', 'it cannot be used from the shop' end
         if not has_buy_space(card) then return 'buy_and_use', 'no free consumable slot' end
         local mode, seq = slot_rule(entries, entry.position, card_name(card))

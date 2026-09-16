@@ -159,6 +159,13 @@ assert(driver.perform(fired[1], fired) == 'done' and select(2, last()).config.id
 local silent = stream(entry('use', {'1'}, 'usedCard,card:Overstock'), entry('sell', {'4', '3'}, 'soldCard,card:Misprint'))
 assert(driver.perform(silent[1], silent) == 'done' and select(2, last()).config.id == 'buy' and driver.note:find('no later use'), driver.note)
 assert(driver.perform(entry('buy', {'1', '1'}, 'boughtCardFromShop,card:c_mp_asteroid,cost:3', {'-3'})) == 'done' and select(2, last()).config.id == 'buy')
+-- A free card (Astronomer's planets) moves no money, so its slot decides too.
+local paid_cost = asteroid.cost
+asteroid.cost = 0
+local free = {entry('buy', {'1', '1'}, 'boughtCardFromShop,card:c_mp_asteroid,cost:0', {}, 1),
+    entry('use', {'1'}, 'usedCard,card:Mars'), entry('use', {'2'}, 'usedCard,card:Temperance')}
+assert(driver.perform(free[1], free) == 'done' and select(2, last()).config.id == 'buy_and_use' and driver.note:find('another card is in its slot'), driver.note)
+asteroid.cost = paid_cost
 G.consumeables.config.card_limit = 2
 G.FUNCS.buy_from_shop = function() return false end
 fails(function() driver.perform(entry('buy', {'1', '1'}, 'boughtCardFromShop,card:c_mp_asteroid,cost:3', {'-3'})) end, 'rejected buying')
