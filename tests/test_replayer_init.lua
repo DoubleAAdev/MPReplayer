@@ -35,7 +35,7 @@ function create_UIBox_mods()
     menu_calls = menu_calls + 1
     if G.ACTIVE_MOD_UI == mod then
         assert(mod.config_tab == nil, 'the actual menu must not contain Config')
-        assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
+        assert(SMODS.LAST_SELECTED_MOD_TAB == (session.phase ~= 'idle' and 'MPReplayer_2' or 'MPReplayer_1'))
     end
     return 'native_menu'
 end
@@ -271,3 +271,14 @@ G.FUNCS.mprpl_end()
 assert(stop_calls == 1, 'End Replay is harmless outside replays')
 session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')
+
+assert(#mod.extra_tabs() == 1)
+session.phase = 'failed'
+assert(#mod.extra_tabs() == 2 and mod.extra_tabs()[2].label == 'Debug')
+G.ACTIVE_MOD_UI = mod; SMODS.LAST_SELECTED_MOD_TAB = 'config'
+assert(create_UIBox_mods() == 'native_menu')
+assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_2')
+session.phase = 'idle'
+assert(create_UIBox_mods() == 'native_menu')
+assert(#mod.extra_tabs() == 1 and SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
+print('PASS: gear opens Debug for active sessions and hidden tabs reset after cleanup')

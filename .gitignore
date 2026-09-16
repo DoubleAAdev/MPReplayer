@@ -93,3 +93,6 @@ __pycache__/
 
 # Local active-replay popup captures
 /active-replay-qa/
+
+# Local replay debug UI captures
+/debug-tab-qa/

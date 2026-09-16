@@ -732,6 +732,12 @@ return function(log, driver, JSON, deps)
 
     -- Keep the exact run available until the exit transition has cleaned up.
     function S.active_run() return session and session.run end
+    function S.debug_snapshot()
+        return {phase = S.phase, status = S.text, run = session and session.run,
+            entries = session and session.entries or {}, cursor = session and session.cursor or 1,
+            done = session and session.done or 0, failure = session and session.failure,
+            state = driver.state_name(), issued = session and session.issued ~= nil}
+    end
 
     function S.end_screen_reached()
         if not session or S.phase ~= 'running' then return end

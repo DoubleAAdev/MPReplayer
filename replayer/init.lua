@@ -40,6 +40,8 @@ return function(mod, JSON)
             local config_tab = mod.config_tab
             mod.config_tab = nil
             if SMODS.LAST_SELECTED_MOD_TAB == 'config' then
+                SMODS.LAST_SELECTED_MOD_TAB = mod.id .. (session.phase ~= 'idle' and '_2' or '_1')
+            elseif session.phase == 'idle' and SMODS.LAST_SELECTED_MOD_TAB == mod.id .. '_2' then
                 SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
             end
             local ok, result = pcall(original, ...)
@@ -280,8 +282,9 @@ return function(mod, JSON)
         end
         return text(fallback, 0.28)
     end
+    local debug_tab = load('debug.lua')(session, mod, JSON)
     mod.extra_tabs = function()
-        return {{label = 'Replays', tab_definition_function = function()
+        local tabs = {{label = 'Replays', tab_definition_function = function()
             session.log_page()
             local rows = {buttons(button('Load Log', 'mprpl_load', 4.0), button('Compare Mods', 'mprpl_details', 4.0)),
                 row('log_filename', 0.38), row('log_count', 0.3)}
@@ -319,6 +322,8 @@ return function(mod, JSON)
             end
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
+        if session.phase ~= 'idle' then tabs[#tabs + 1] = {label = 'Debug', tab_definition_function = debug_tab.definition} end
+        return tabs
     end
     end_screen = load('end-screen.lua')(session, show_replays, after_start)
     return session
