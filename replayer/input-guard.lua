@@ -27,7 +27,7 @@ return function(session)
         cash_out = true, toggle_shop = true, start_setup_run = true, setup_run = true,
         start_run = true, go_to_menu = true, mp_unstuck = true, mp_unstuck_blind = true,
         mp_unstuck_arcana = true, lobby_leave = true, mp_return_to_lobby = true,
-        lobby_choose_deck = true, brpl_start = true, brpl_load = true, brpl_next = true,
+        lobby_choose_deck = true, brpl_start_listed = true, brpl_start = true, brpl_load = true, brpl_next = true,
     }
     local function in_overlay(node)
         return G.OVERLAY_MENU ~= nil and node and node.UIBox == G.OVERLAY_MENU and not node.under_overlay

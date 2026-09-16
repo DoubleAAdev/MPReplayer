@@ -1,8 +1,7 @@
-# Balatro Replayer 2.5.0
+# Balatro Replayer 2.6.0
 
-- Render Log Info as distinct aligned game rows with native deck and stake sprites and a Multiplayer icon.
-- Clearly label Multiplayer, Single-player, Practice (solo), and unknown game types based on recorded metadata. Missing evidence is never treated as proof of a solo game.
-- Hide pagination for short logs and rebuild icon rows when changing pages.
-- Retain text fallbacks when a recorded deck or stake asset is unavailable. Only games containing supported replay records can be listed; ordinary unrecorded solo runs cannot be reconstructed.
+- Add Start Replay beside each game in Log Info, selecting that exact game even after pagination or removal from the replay list.
+- Preserve the two-press mod mismatch confirmation and show status messages on the list page.
+- Replace numeric stake labels with localized stake names, including White Stake, in both Log Info and Config.
 
-Seven Lua suites passed, including list/icon construction and game-type classification. Restart Balatro to load the update.
+Seven Lua suites passed. Restart Balatro to load the update.

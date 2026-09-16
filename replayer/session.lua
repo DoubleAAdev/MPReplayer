@@ -165,6 +165,14 @@ return function(log, driver, JSON, deps)
         return fallback .. ' Deck'
     end
     S.deck_name = deck_name
+    function S.stake_name(index)
+        local stake = ((G.P_CENTER_POOLS or {}).Stake or {})[index]
+        local localized = stake and ((((G.localization or {}).descriptions or {}).Stake or {})[stake.key])
+        if localized and type(localized.name) == 'string' then return localized.name end
+        if stake and stake.name and not stake.name:match('^stake_') then return stake.name end
+        local names = {'White Stake', 'Red Stake', 'Green Stake', 'Black Stake', 'Blue Stake', 'Purple Stake', 'Orange Stake', 'Gold Stake'}
+        return names[index] or 'Unknown Stake'
+    end
     function S.game_type(m)
         if m.practice == true or m.is_practice == true then return 'Practice (solo)', false end
         if m.multiplayer == false or m.is_multiplayer == false then return 'Single-player', false end
@@ -185,7 +193,7 @@ return function(log, driver, JSON, deps)
             if run then
                 local m = run.manifest
                 title = run.label_number .. '. ' .. short(m.player or 'Unknown player', 15) .. ' vs ' .. short(m.opponent or 'Unknown opponent', 15)
-                setup = 'Deck: ' .. short(deck_name(m), 22) .. ' | Stake: ' .. tostring(m.stake)
+                setup = 'Deck: ' .. short(deck_name(m), 22) .. ' | ' .. S.stake_name(m.stake)
             end
             S['log_game' .. slot], S['log_setup' .. slot] = title, setup
         end
@@ -200,7 +208,7 @@ return function(log, driver, JSON, deps)
         local m = run.manifest
         S.replay_title = 'Replay ' .. tostring(run.label_number or S.index) .. '  (' .. S.index .. ' of ' .. #S.runs .. ')'
         S.replay_players = short(m.player or 'Unknown player', 18) .. ' vs ' .. short(m.opponent or 'Unknown opponent', 18)
-        S.replay_setup = short(deck_name(m), 24) .. '  |  Stake: ' .. tostring(m.stake)
+        S.replay_setup = short(deck_name(m), 24) .. '  |  ' .. S.stake_name(m.stake)
         S.replay_seed = 'Seed: ' .. short(m.seed, 24)
         S.replay_title = S.replay_title .. (run.replayed and ' - old replay' or (run.complete and ' - complete' or ' - partial'))
     end
@@ -234,6 +242,27 @@ return function(log, driver, JSON, deps)
         if not S.runs or S.phase ~= 'idle' then return end
         S.index = S.index % #S.runs + 1
         show_run()
+    end
+
+    function S.start_listed(run)
+        assert(S.phase == 'idle', 'End the current replay first')
+        local found = false
+        for _, candidate in ipairs(S.log_runs or {}) do if candidate == run then found = true end end
+        assert(found, 'This game is no longer in the loaded log')
+        S.runs = S.runs or {}
+        local index
+        for i, candidate in ipairs(S.runs) do if candidate == run then index = i end end
+        if not index then
+            S.runs[#S.runs + 1] = run; index = #S.runs
+            S.confirmed, S.confirmed_mods = nil, nil
+        end
+        if S.runs[S.index] ~= run or S.index ~= index then
+            S.index = index
+            show_run()
+        else
+            S.label_run()
+        end
+        S.start()
     end
 
     function S.remove_run()

@@ -102,7 +102,7 @@ assert(#tabs == 1 and tabs[1].label == 'Log Info')
 assert(tabs[1].tab_definition_function().n == G.UIT.ROOT)
 session.load(text .. text .. text .. text, 'C:/logs/match.log')
 assert(session.log_filename == 'match.log' and session.log_count == '4 games in this log')
-assert(session.log_game1:find('1%. ') and session.log_setup1 == 'Deck: Red Deck | Stake: 1')
+assert(session.log_game1:find('1%. ') and session.log_setup1 == 'Deck: Red Deck | White Stake')
 G.FUNCS.brpl_log_next()
 assert(session.log_game1:find('4%. ') and session.log_game2 == '')
 G.FUNCS.brpl_log_prev()
@@ -129,6 +129,31 @@ session.log_runs[1].manifest.lobby_code = 'ABC'
 local list = mod.extra_tabs()[1].tab_definition_function()
 assert(sprites >= 3, 'deck, stake and Multiplayer icons must be constructed')
 assert(list.nodes[3].config.minw == 6.3, 'games have distinct list rows')
+
+-- Direct starts select exact objects across pages/removals and retain confirmation.
+assert(session.stake_name(1) == 'White Stake' and session.stake_name(8) == 'Gold Stake')
+G.localization = {descriptions = {Stake = {stake_custom = {name = 'Custom Stake'}}}}
+G.P_CENTER_POOLS.Stake[9] = {key = 'stake_custom'}
+assert(session.stake_name(9) == 'Custom Stake')
+local original_start = session.start
+local selected = session.log_runs[4]
+local starts = 0
+session.start = function()
+    assert(session.runs[session.index] == selected)
+    starts = starts + 1
+    if starts == 1 then session.confirmed = selected else assert(session.confirmed == selected) end
+end
+G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+assert(starts == 2)
+session.remove_run()
+G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+assert(session.runs[session.index] == selected)
+session.phase = 'running'
+assert(not pcall(session.start_listed, selected))
+session.phase = 'idle'
+assert(not pcall(session.start_listed, {}))
+session.start = original_start
 
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end

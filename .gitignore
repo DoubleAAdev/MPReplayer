@@ -51,3 +51,6 @@ __pycache__/
 
 # Local sprite inspection captures
 /sprite-inspection/
+
+# Local UI interaction traces
+/ui-traces/

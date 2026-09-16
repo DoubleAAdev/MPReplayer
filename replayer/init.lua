@@ -38,6 +38,10 @@ return function(mod, JSON)
             session.load(assert(NFS.read(path), 'Could not read the selected log'), path)
         end)
     end
+    G.FUNCS.brpl_start_listed = function(e)
+        protect(function() session.start_listed(e.config.ref_table) end)
+        guard().update()
+    end
     G.FUNCS.brpl_remove = function()
         protect(session.remove_run)
         guard().update()
@@ -191,7 +195,10 @@ return function(mod, JSON)
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
                                 text(session.deck_name(m):sub(1, 23), 0.3),
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
-                                text('Stake ' .. tostring(m.stake), 0.3)}}}}
+                                text(session.stake_name(m.stake), 0.3)}}}},
+                        UIBox_button{label = {'Start Replay'}, button = 'brpl_start_listed', ref_table = run,
+                            minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = G.C.GREEN or G.C.BLUE}
+
                     }}
                 end
             end
@@ -200,8 +207,7 @@ return function(mod, JSON)
                 rows[#rows + 1] = row('log_position', 0.3)
                 rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
             end
-            rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.1}, nodes = {
-                text('Only games recorded in the log are listed.', 0.25)}}
+            for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do rows[#rows + 1] = row(field, 0.28) end
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
     end
