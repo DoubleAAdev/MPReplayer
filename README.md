@@ -75,3 +75,5 @@ Replays uses larger native deck/stake icons in wide rows without a game-type bad
 Each Replays game has a Start Replay button. It selects that exact game and retains the two-press confirmation when mods differ. Starting a removed entry restores it to the replay list. Stake labels use their names (for example, White Stake).
 
 Only potentially critical mismatches require two presses. Handy and JokerDisplay differences are treated as noncritical based on their control/display purpose; all unclassified mod IDs remain potentially critical. The comparison page still lists every difference. Classification references: https://github.com/SleepyG11/HandyBalatro and https://github.com/nh6574/JokerDisplay.
+
+Load Log appends games to the current session list and selects the first newly imported game. Invalid logs leave existing games intact. Reimporting a log appends its games again. Deck icons resolve both recorded center IDs and deck names, such as Ghost Deck.

@@ -185,14 +185,14 @@ return function(mod, JSON)
     mod.extra_tabs = function()
         return {{label = 'Replays', tab_definition_function = function()
             session.log_page()
-            local rows = {buttons(button('Load Log', 'brpl_load', 3.0), button('Compare Mods', 'brpl_details', 5.0)),
+            local rows = {buttons(button('Load Log', 'brpl_load', 4.0), button('Compare Mods', 'brpl_details', 4.0)),
                 row('log_filename', 0.38), row('log_count', 0.3)}
             local runs = session.log_runs or {}
             for slot = 1, 3 do
                 local run = runs[(session.log_page_index - 1) * 3 + slot]
                 if run then
                     local m = run.manifest
-                    local deck = (G.P_CENTERS or {})[m.deck]
+                    local deck = session.deck_center(m.deck)
                     local stake = ((G.P_CENTER_POOLS or {}).Stake or {})[m.stake]
                     local atlases = G.ASSET_ATLAS or {}
                     local _, multiplayer = session.game_type(m)

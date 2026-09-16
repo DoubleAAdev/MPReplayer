@@ -155,14 +155,19 @@ return function(log, driver, JSON, deps)
         local text = tostring(value or ''):gsub('[%c]', ' ')
         return #text > limit and (text:sub(1, limit - 3) .. '...') or text
     end
+    function S.deck_center(value)
+        local key = deck_key(value)
+        return key and G.P_CENTERS[key], key
+    end
     local function deck_name(m)
-        local localized = (((G.localization or {}).descriptions or {}).Back or {})[m.deck]
+        local center, key = S.deck_center(m.deck)
+        local localized = (((G.localization or {}).descriptions or {}).Back or {})[key or m.deck]
         if localized and type(localized.name) == 'string' then return localized.name end
-        local name = ((G.P_CENTERS or {})[m.deck] or {}).name
+        local name = (center or {}).name
         if name and not name:match('^b_') then return name end
         local fallback = tostring(m.deck):gsub('^b_mp_', ''):gsub('^b_', ''):gsub('_', ' ')
         fallback = fallback:gsub('(%a)([%w]*)', function(first, rest) return first:upper() .. rest end)
-        return fallback .. ' Deck'
+        return fallback:match(' Deck$') and fallback or (fallback .. ' Deck')
     end
     S.deck_name = deck_name
     function S.stake_name(index)
@@ -185,7 +190,7 @@ return function(log, driver, JSON, deps)
         local pages = math.max(1, math.ceil(#runs / 3))
         S.log_page_index = ((S.log_page_index or 1) - 1 + (delta or 0)) % pages + 1
         S.log_filename = S.log_source or 'No log loaded'
-        S.log_count = #runs .. ' games in this log'
+        S.log_count = #runs .. ' replays loaded'
         S.log_position = 'Page ' .. S.log_page_index .. ' of ' .. pages
         for slot = 1, 3 do
             local run = runs[(S.log_page_index - 1) * 3 + slot]
@@ -227,14 +232,22 @@ return function(log, driver, JSON, deps)
 
     function S.load(text, source)
         assert(S.phase == 'idle', 'Finish the current replay before loading another log')
-        S.runs = log.parse(text)
-        for number, run in ipairs(S.runs) do run.label_number = number end
-        S.log_runs = {}
-        for i, run in ipairs(S.runs) do S.log_runs[i] = run end
-        S.log_source = short(tostring(source or 'Loaded log'):gsub('\\', '/'):match('[^/]+$'), 40)
-        S.log_page_index = 1
+        local imported = log.parse(text) -- Parse before mutating the existing list.
+        S.runs, S.log_runs = S.runs or {}, S.log_runs or {}
+        local first = #S.runs + 1
+        local first_log = #S.log_runs + 1
+        local filename = short(tostring(source or 'Loaded log'):gsub('\\', '/'):match('[^/]+$'), 40)
+        for _, run in ipairs(imported) do
+            run.label_number = #S.log_runs + 1
+            run.source_name = filename
+            S.runs[#S.runs + 1] = run
+            S.log_runs[#S.log_runs + 1] = run
+        end
+        S.log_imports = (S.log_imports or 0) + 1
+        S.log_source = S.log_imports == 1 and filename or (S.log_imports .. ' logs loaded')
+        S.log_page_index = math.floor((first_log - 1) / 3) + 1
         S.log_page()
-        S.index = 1
+        S.index = first
         show_run()
     end
 

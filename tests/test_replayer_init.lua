@@ -53,6 +53,7 @@ assert(mod.extra_tabs()[1].label == 'Replays')
 assert(tab.nodes[1].nodes[1].config.button == 'brpl_load')
 assert(tab.nodes[1].nodes[3].config.button == 'brpl_details')
 assert(tab.nodes[1].nodes[3].nodes[1].config.text == 'Compare Mods')
+assert(tab.nodes[1].nodes[1].config.minw == tab.nodes[1].nodes[3].config.minw)
 local opened = 0
 G.FUNCS.openModUI_BalatroReplayer = function()
     opened = opened + 1
@@ -76,13 +77,13 @@ assert(session.runs == loaded)
 local dropped = {getFilename = function() return 'C:/x/lovely-2.LOG' end, getSize = function() return #text end,
     open = function() end, read = function() return text .. ':: MULTIPLAYER :: MP_RLOG: 2 reroll\n' end, close = function() end}
 love.filedropped(dropped)
-assert(session.runs ~= loaded and session.runs[1].actions == 2, session.text)
+assert(session.runs == loaded and #session.runs == 2 and session.runs[1].actions == 1 and session.runs[2].actions == 2, session.text)
 -- The filtered actions are written out for the player to read.
 assert(writes['balatro_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['balatro_replayer/actions.txt'])
 assert(session.text:find('2 actions') and not session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
 local other = {getFilename = function() return 'notes.txt' end}
 love.filedropped(other)
-assert(session.runs[1].actions == 2, 'other files are not logs')
+assert(session.runs[2].actions == 2, 'other files are not logs')
 
 -- A failing start is reported in the status, not raised at the button.
 G.FUNCS.brpl_start()
@@ -90,6 +91,8 @@ assert(session.phase == 'idle' and session.text:find('Multiplayer is required'),
 G.FUNCS.brpl_next()
 assert(session.index == 1, 'a single run has nothing to cycle')
 
+-- Isolate removal fixtures from the already tested append workflow.
+session.runs, session.log_runs, session.log_imports = nil, nil, nil
 -- Stable replay numbering survives removals and the final removal clears selection.
 session.load(text .. text)
 assert(#session.runs == 2 and session.runs[2].label_number == 2)
@@ -101,6 +104,7 @@ assert(session.runs == nil and session.replay_title == 'No replay selected')
 assert(writes['balatro_replayer/actions.txt'] == '')
 G.FUNCS.brpl_next(); G.FUNCS.brpl_remove()
 assert(not pcall(session.start), 'empty selection cannot start')
+session.runs, session.log_runs, session.log_imports = nil, nil, nil
 session.load(text)
 assert(session.runs[1].label_number == 1)
 local old_stop = session.stop
@@ -115,8 +119,9 @@ session.stop = old_stop
 local tabs = mod.extra_tabs()
 assert(#tabs == 1 and tabs[1].label == 'Replays')
 assert(tabs[1].tab_definition_function().n == G.UIT.ROOT)
+session.runs, session.log_runs, session.log_imports = nil, nil, nil
 session.load(text .. text .. text .. text, 'C:/logs/match.log')
-assert(session.log_filename == 'match.log' and session.log_count == '4 games in this log')
+assert(session.log_filename == 'match.log' and session.log_count == '4 replays loaded')
 assert(session.log_game1:find('1%. ') and session.log_setup1 == 'Deck: Red Deck | White Stake')
 G.FUNCS.brpl_log_next()
 assert(session.log_game1:find('4%. ') and session.log_game2 == '')
@@ -133,7 +138,7 @@ assert(session.game_type({practice = true, lobby_code = 'ABC'}) == 'Practice (so
 assert(session.game_type({multiplayer = false}) == 'Single-player')
 assert(session.game_type({gamemode = 'gamemode_mp_attrition'}) == 'Game type unknown')
 G.ASSET_ATLAS = {centers = {}, chips = {}, mp_modicon = {}}
-G.P_CENTERS = {b_red = {pos = {x = 0, y = 0}}}
+G.P_CENTERS = {b_red = {set = 'Back', pos = {x = 0, y = 0}}}
 G.P_CENTER_POOLS = {Stake = {{pos = {x = 0, y = 0}}}}
 local sprites = 0
 local sprite_atlases, sprite_sizes = {}, {}
@@ -174,6 +179,20 @@ assert(not pcall(session.start_listed, selected))
 session.phase = 'idle'
 assert(not pcall(session.start_listed, {}))
 session.start = original_start
+
+-- Name-based manifests resolve the same sprite as center keys.
+G.P_CENTERS.b_ghost = {key = 'b_ghost', set = 'Back', name = 'Ghost Deck', pos = {x = 2, y = 2}}
+assert(session.deck_center('Ghost Deck') == G.P_CENTERS.b_ghost)
+assert(session.deck_center('b_ghost') == G.P_CENTERS.b_ghost)
+assert(session.deck_name({deck = 'Ghost Deck'}) == 'Ghost Deck')
+local preserved = session.log_runs[1]
+local old_count = #session.log_runs
+session.load(text, 'second.log')
+assert(#session.log_runs == old_count + 1 and session.log_runs[1] == preserved)
+assert(session.runs[session.index] == session.log_runs[#session.log_runs])
+assert(session.log_runs[#session.log_runs].source_name == 'second.log')
+assert(not pcall(session.load, 'invalid log'))
+assert(#session.log_runs == old_count + 1, 'invalid imports preserve existing games')
 
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end
