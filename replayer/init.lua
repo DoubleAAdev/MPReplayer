@@ -179,20 +179,16 @@ return function(mod, JSON)
                     local deck = (G.P_CENTERS or {})[m.deck]
                     local stake = ((G.P_CENTER_POOLS or {}).Stake or {})[m.stake]
                     local atlases = G.ASSET_ATLAS or {}
-                    local kind, multiplayer = session.game_type(m)
-                    local badge = {}
-                    if multiplayer then badge[#badge + 1] = icon(atlases.mp_modicon, {x = 0, y = 0}, 0.36, 0.36, 'MP') end
-                    badge[#badge + 1] = text(kind, 0.28)
+                    local _, multiplayer = session.game_type(m)
                     local names = session['log_game' .. slot]:gsub('^%d+%. ', '')
                     if not multiplayer then names = tostring(m.player or 'Unknown player'):sub(1, 30) end
                     rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cl', padding = 0.1, r = 0.12,
-                        minw = 6.3, colour = G.C.BLACK or G.C.CLEAR}, nodes = {
+                        minw = 8.2, colour = G.C.BLACK or G.C.CLEAR}, nodes = {
                         {n = G.UIT.C, config = {align = 'cm', minw = 0.4}, nodes = {text(tostring(run.label_number) .. '.', 0.4)}},
                         {n = G.UIT.C, config = {align = 'cm', padding = 0.12}, nodes = {
-                            icon(deck and atlases[deck.atlas or 'centers'], deck and deck.pos, 0.55, 0.75, '?')}},
-                        {n = G.UIT.C, config = {align = 'cl', padding = 0.04, minw = 3.8}, nodes = {
+                            icon(deck and atlases[deck.atlas or 'centers'], deck and deck.pos, 0.78, 1.06, '?')}},
+                        {n = G.UIT.C, config = {align = 'cl', padding = 0.08, minw = 4.7}, nodes = {
                             {n = G.UIT.R, config = {align = 'cl'}, nodes = {text(names, 0.36)}},
-                            {n = G.UIT.R, config = {align = 'cl', padding = 0.03}, nodes = badge},
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
                                 text(session.stake_name(m.stake), 0.3)}}}},

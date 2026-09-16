@@ -57,3 +57,6 @@ __pycache__/
 
 # Local compatibility inspection scratch files
 /compat-inspection/
+
+# Local layout comparison output
+/layout-comparisons/

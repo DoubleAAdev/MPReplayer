@@ -70,7 +70,7 @@ A replay writes nothing into the Lovely log. From **Start Replay** until you are
 - The Multiplayer round timer is off during a replay, since a replay runs at animation speed. It changes no card.
 - Replayed wins and losses are not written to Multiplayer's match history. Career statistics count as in practice mode.
 
-Log Info uses native deck/stake icons and a Multiplayer badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.
+Log Info uses larger native deck/stake icons in wide rows without a game-type badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.
 
 Each Log Info game has a Start Replay button. It selects that exact game and retains the two-press confirmation when mods differ. Starting a removed entry restores it to the replay list. Stake labels use their names (for example, White Stake).
 

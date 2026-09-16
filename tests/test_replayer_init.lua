@@ -121,14 +121,19 @@ G.ASSET_ATLAS = {centers = {}, chips = {}, mp_modicon = {}}
 G.P_CENTERS = {b_red = {pos = {x = 0, y = 0}}}
 G.P_CENTER_POOLS = {Stake = {{pos = {x = 0, y = 0}}}}
 local sprites = 0
+local sprite_atlases, sprite_sizes = {}, {}
 function Sprite(x, y, w, h, atlas, pos)
     sprites = sprites + 1
+    sprite_atlases[atlas] = true
+    sprite_sizes[#sprite_sizes + 1] = {w, h}
     return {states = {drag = {}, collide = {}}}
 end
 session.log_runs[1].manifest.lobby_code = 'ABC'
 local list = mod.extra_tabs()[1].tab_definition_function()
-assert(sprites >= 3, 'deck, stake and Multiplayer icons must be constructed')
-assert(list.nodes[3].config.minw == 6.3, 'games have distinct list rows')
+assert(sprites >= 2 and not sprite_atlases[G.ASSET_ATLAS.mp_modicon], 'only deck and stake icons are shown')
+assert(sprite_sizes[1][1] == 0.78 and sprite_sizes[1][2] == 1.06)
+assert(#list.nodes[3].nodes[3].nodes == 2, 'name and stake occupy two aligned rows')
+assert(list.nodes[3].config.minw == 8.2, 'games have distinct list rows')
 
 -- Direct starts select exact objects across pages/removals and retain confirmation.
 assert(session.stake_name(1) == 'White Stake' and session.stake_name(8) == 'Gold Stake')

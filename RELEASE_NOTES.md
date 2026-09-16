@@ -1,7 +1,7 @@
-# Balatro Replayer 2.7.0
+# Balatro Replayer 2.7.1
 
-- Place replay indices in a separate left column, align player names, remove deck text, and stack stake icon/name directly under the multiplayer badge.
-- Only potentially critical mod differences require two presses. Reviewed Handy and JokerDisplay control/display differences remain visible but do not block a first press; unknown mod IDs remain potentially critical.
-- Show the compatibility assessment on Compare Replay Mods. Existing hard requirements, including Multiplayer version compatibility, remain enforced.
+- Remove the game-type badge from replay list rows.
+- Widen each row and its player-name column, and enlarge the deck sprite while preserving its aspect ratio.
+- Keep the side index, aligned player/stake rows, and direct Start Replay button.
 
-Seven Lua suites passed. Restart Balatro to load the update.
+Restart Balatro to load the updated layout.
