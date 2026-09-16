@@ -168,11 +168,25 @@ local starts = 0
 session.start = function()
     assert(session.runs[session.index] == selected)
     starts = starts + 1
-    if starts == 1 then session.confirmed = selected else assert(session.confirmed == selected) end
+    if session.confirmed == selected then
+        session.phase = 'joining'
+    else
+        session.confirmed, session.confirmed_mods = selected, 'test-mods'
+    end
 end
 G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+assert(session.phase == 'idle' and G.OVERLAY_MENU.no_back)
+local controls = G.OVERLAY_MENU.contents[4]
+assert(controls.nodes[1].config.button == 'brpl_cancel_replay')
+assert(controls.nodes[3].config.button == 'brpl_continue_replay')
+G.FUNCS.brpl_cancel_replay()
+assert(session.phase == 'idle' and not session.confirmed)
+G.FUNCS.brpl_continue_replay()
+assert(starts == 1, 'cancelled confirmation cannot start')
 G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
-assert(starts == 2)
+G.FUNCS.brpl_continue_replay()
+assert(starts == 3 and session.phase == 'joining')
+session.phase = 'idle'
 session.remove_run()
 G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
 assert(session.runs[session.index] == selected)

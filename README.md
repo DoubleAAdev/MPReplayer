@@ -77,3 +77,5 @@ Each Replays game has a Start Replay button. It selects that exact game and reta
 Only potentially critical mismatches require two presses. Handy and JokerDisplay differences are treated as noncritical based on their control/display purpose; all unclassified mod IDs remain potentially critical. The comparison page still lists every difference. Classification references: https://github.com/SleepyG11/HandyBalatro and https://github.com/nh6574/JokerDisplay.
 
 Load Log replaces the current list with games from the selected log. Only one log is active at a time. Invalid logs and cancelled selections keep the existing list, and source files are never deleted.
+
+Critical or unknown mod differences now open a Cancel / Continue popup instead of requiring a second press. Cancel leaves the replay stopped; Continue rechecks compatibility before starting.

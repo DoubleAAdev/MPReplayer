@@ -64,10 +64,43 @@ return function(mod, JSON)
             show_replays()
         end)
     end
-    G.FUNCS.brpl_start_listed = function(e)
-        protect(function() session.start_listed(e.config.ref_table) end)
+    local pending_confirmation
+    local show_confirmation
+    local function after_start()
         guard().update()
-        if session.phase == 'idle' and G.OVERLAY_MENU then show_replays() end
+        if session.phase == 'idle' and session.confirmed then
+            pending_confirmation = {run = session.confirmed, mods = session.confirmed_mods}
+            -- Only the popup's Continue action may reuse this approval request.
+            session.confirmed, session.confirmed_mods = nil, nil
+            show_confirmation()
+        elseif session.phase == 'idle' and G.OVERLAY_MENU then
+            show_replays()
+        end
+    end
+    G.FUNCS.brpl_start_listed = function(e)
+        pending_confirmation = nil
+        session.confirmed, session.confirmed_mods = nil, nil
+        protect(function() session.start_listed(e.config.ref_table) end)
+        after_start()
+    end
+    G.FUNCS.brpl_cancel_replay = function()
+        pending_confirmation = nil
+        session.confirmed, session.confirmed_mods = nil, nil
+        session.status('Replay cancelled.')
+        show_replays()
+    end
+    G.FUNCS.brpl_continue_replay = function()
+        local pending = pending_confirmation
+        pending_confirmation = nil
+        if not pending or session.phase ~= 'idle' then return end
+        if not session.runs or session.runs[session.index] ~= pending.run then
+            session.status('Replay selection changed. Start again.')
+            show_replays()
+            return
+        end
+        session.confirmed, session.confirmed_mods = pending.run, pending.mods
+        protect(session.start)
+        after_start()
     end
     G.FUNCS.brpl_remove = function()
         protect(session.remove_run)
@@ -75,8 +108,10 @@ return function(mod, JSON)
     end
     G.FUNCS.brpl_next = function() protect(session.next_run) end
     G.FUNCS.brpl_start = function()
+        pending_confirmation = nil
+        session.confirmed, session.confirmed_mods = nil, nil
         protect(session.start)
-        guard().update()
+        after_start()
     end
     local function change_log_page(delta)
         session.log_page(delta)
@@ -153,6 +188,19 @@ return function(mod, JSON)
     local function buttons(left, right)
         return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
             left, {n = G.UIT.C, config = {minw = 0.12}}, right}}
+    end
+    show_confirmation = function()
+        local function message(text, scale)
+            return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
+                {n = G.UIT.T, config = {text = text, scale = scale or 0.38, colour = G.C.WHITE, shadow = true}}}}
+        end
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{no_back = true, contents = {
+            message('Mods differ', 0.55),
+            message('Some mods may affect this replay.'),
+            message('It may play differently or stop early.'),
+            buttons(button('Cancel', 'brpl_cancel_replay'), button('Continue', 'brpl_continue_replay', nil, G.C.GREEN)),
+        }}}
+        -- Escape closes the popup without starting; a fresh Start always asks again.
     end
     G.FUNCS.brpl_details_back = show_replays
     G.FUNCS.brpl_details = function()

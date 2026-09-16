@@ -69,3 +69,6 @@ __pycache__/
 
 # Local UI smoke-check output
 /ui-smoke/
+
+# Local confirmation-popup QA captures
+/confirmation-qa/

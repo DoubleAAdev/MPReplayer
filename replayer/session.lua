@@ -418,7 +418,7 @@ return function(log, driver, JSON, deps)
         local differs, signature = S.refresh_mods()
         if differs and (S.confirmed ~= run or S.confirmed_mods ~= signature) then
             S.confirmed, S.confirmed_mods = run, signature
-            S.status('Critical or unknown mods differ. Replay may stop early. Press Start Replay again to continue.')
+            S.status('Critical or unknown mods differ. Replay may stop early.')
             return
         end
         S.confirmed = nil

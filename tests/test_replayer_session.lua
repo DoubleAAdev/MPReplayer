@@ -112,7 +112,7 @@ manifest.mod_hash = 'preview=false;unlocked=true;encryptID=1;Handy-2.0.5;Multipl
 MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'
 ok, err = pcall(session.start)
 assert(ok, err)
-assert(session.text:find('Press Start Replay again'), session.text)
+assert(session.text:find('Critical or unknown mods differ'), session.text)
 assert(session.mod_summary == 'Missing: 0 | Extra: 1 | Versions: 2', session.mod_summary)
 assert(session.mod_overview == '3 differences' and session.mod_hint == 'May affect replay')
 assert(session.mod_detail1 == 'Extra: takanatro')
