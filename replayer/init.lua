@@ -136,7 +136,7 @@ return function(mod, JSON)
             {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
                 {n = G.UIT.T, config = {text = 'Compare Replay Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
             row('replay_title', 0.4),
-            row('mod_missing'), row('mod_extra'), row('mod_versions'),
+            row('mod_missing'), row('mod_extra'), row('mod_versions'), row('mod_risk', 0.32),
         }
         if session.mod_missing == '' then rows[#rows + 1] = row('mod_summary') end
         rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
@@ -183,17 +183,17 @@ return function(mod, JSON)
                     local badge = {}
                     if multiplayer then badge[#badge + 1] = icon(atlases.mp_modicon, {x = 0, y = 0}, 0.36, 0.36, 'MP') end
                     badge[#badge + 1] = text(kind, 0.28)
-                    local names = session['log_game' .. slot]
-                    if not multiplayer then names = tostring(run.label_number) .. '. ' .. tostring(m.player or 'Unknown player'):sub(1, 30) end
+                    local names = session['log_game' .. slot]:gsub('^%d+%. ', '')
+                    if not multiplayer then names = tostring(m.player or 'Unknown player'):sub(1, 30) end
                     rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cl', padding = 0.1, r = 0.12,
                         minw = 6.3, colour = G.C.BLACK or G.C.CLEAR}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', minw = 0.4}, nodes = {text(tostring(run.label_number) .. '.', 0.4)}},
                         {n = G.UIT.C, config = {align = 'cm', padding = 0.12}, nodes = {
                             icon(deck and atlases[deck.atlas or 'centers'], deck and deck.pos, 0.55, 0.75, '?')}},
-                        {n = G.UIT.C, config = {align = 'cl', padding = 0.04}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cl', padding = 0.04, minw = 3.8}, nodes = {
                             {n = G.UIT.R, config = {align = 'cl'}, nodes = {text(names, 0.36)}},
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.03}, nodes = badge},
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
-                                text(session.deck_name(m):sub(1, 23), 0.3),
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
                                 text(session.stake_name(m.stake), 0.3)}}}},
                         UIBox_button{label = {'Start Replay'}, button = 'brpl_start_listed', ref_table = run,

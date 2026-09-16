@@ -54,3 +54,6 @@ __pycache__/
 
 # Local UI interaction traces
 /ui-traces/
+
+# Local compatibility inspection scratch files
+/compat-inspection/

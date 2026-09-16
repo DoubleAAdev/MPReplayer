@@ -95,6 +95,18 @@ assert(not ok and err:find('Install Multiplayer 0.5.5'))
 SMODS.Mods.Multiplayer.version = '0.5.5'
 assert(session.phase == 'idle' and MP.LOBBY.config == original_config and Client.send == original_send, 'a refused start changes nothing')
 
+-- Only reviewed UI/control differences bypass confirmation.
+local saved_hash, saved_mods = manifest.mod_hash, MP.MOD_STRING
+manifest.mod_hash = 'Handy-1.0;JokerDisplay-1.0'
+MP.MOD_STRING = 'Handy-2.0'
+assert(session.refresh_mods() == false)
+assert(session.mod_risk == 'No critical mod differences')
+MP.MOD_STRING = 'Handy-2.0;UnknownMod-1.0'
+assert(session.refresh_mods() == true)
+MP.MOD_STRING = 'Handy-2.0;Steamodded-1.0'
+assert(session.refresh_mods() == true)
+manifest.mod_hash, MP.MOD_STRING = saved_hash, saved_mods
+
 -- A log played with other mods is named before anything starts.
 manifest.mod_hash = 'preview=false;unlocked=true;encryptID=1;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
 MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'

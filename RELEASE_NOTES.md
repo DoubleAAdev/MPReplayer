@@ -1,7 +1,7 @@
-# Balatro Replayer 2.6.0
+# Balatro Replayer 2.7.0
 
-- Add Start Replay beside each game in Log Info, selecting that exact game even after pagination or removal from the replay list.
-- Preserve the two-press mod mismatch confirmation and show status messages on the list page.
-- Replace numeric stake labels with localized stake names, including White Stake, in both Log Info and Config.
+- Place replay indices in a separate left column, align player names, remove deck text, and stack stake icon/name directly under the multiplayer badge.
+- Only potentially critical mod differences require two presses. Reviewed Handy and JokerDisplay control/display differences remain visible but do not block a first press; unknown mod IDs remain potentially critical.
+- Show the compatibility assessment on Compare Replay Mods. Existing hard requirements, including Multiplayer version compatibility, remain enforced.
 
 Seven Lua suites passed. Restart Balatro to load the update.

@@ -73,3 +73,5 @@ A replay writes nothing into the Lovely log. From **Start Replay** until you are
 Log Info uses native deck/stake icons and a Multiplayer badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.
 
 Each Log Info game has a Start Replay button. It selects that exact game and retains the two-press confirmation when mods differ. Starting a removed entry restores it to the replay list. Stake labels use their names (for example, White Stake).
+
+Only potentially critical mismatches require two presses. Handy and JokerDisplay differences are treated as noncritical based on their control/display purpose; all unclassified mod IDs remain potentially critical. The comparison page still lists every difference. Classification references: https://github.com/SleepyG11/HandyBalatro and https://github.com/nh6574/JokerDisplay.

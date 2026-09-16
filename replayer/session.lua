@@ -341,6 +341,12 @@ return function(log, driver, JSON, deps)
         S.mod_position = #pages > 0 and ('Details ' .. S.mod_page_index .. '/' .. #pages) or 'No differences to list'
     end
 
+    -- Reviewed presentation/control mods; unknown IDs remain potentially critical.
+    -- https://github.com/SleepyG11/HandyBalatro
+    -- https://github.com/nh6574/JokerDisplay
+    local noncritical_mods = {Handy = true, JokerDisplay = true}
+    function S.mod_is_critical(id) return not noncritical_mods[id] end
+
     -- Compare the manifest with mods loaded by this running game, not files on disk.
     function S.refresh_mods()
         local run = S.runs and S.runs[S.index]
@@ -350,6 +356,8 @@ return function(log, driver, JSON, deps)
         S.mod_summary = not run and 'Load a replay to compare mods' or 'Mod information unavailable'
         S.mod_missing, S.mod_extra, S.mod_versions = '', '', ''
         local differences = {}
+        local critical = 0
+        S.mod_risk = 'Compatibility not assessed'
         if type(recorded) == 'string' and recorded ~= '' and type(current) == 'string' and current ~= '' then
             local logged, loaded = mods_of(recorded), mods_of(current)
             local missing, extra, changed = {}, {}, {}
@@ -359,6 +367,10 @@ return function(log, driver, JSON, deps)
             end
             for id in pairs(loaded) do if logged[id] == nil then extra[#extra + 1] = id end end
             table.sort(missing); table.sort(extra); table.sort(changed)
+            for _, group in ipairs({missing, extra, changed}) do
+                for _, id in ipairs(group) do if S.mod_is_critical(id) then critical = critical + 1 end end
+            end
+            S.mod_risk = critical > 0 and (critical .. ' potentially critical differences') or 'No critical mod differences'
             S.mod_summary = 'Missing: ' .. #missing .. ' | Extra: ' .. #extra .. ' | Versions: ' .. #changed
             S.mod_missing = 'Missing from this game: ' .. #missing
             S.mod_extra = 'Extra in this game: ' .. #extra
@@ -376,7 +388,7 @@ return function(log, driver, JSON, deps)
             for start = 1, #lines, 3 do S.mod_pages[#S.mod_pages + 1] = {lines[start], lines[start + 1], lines[start + 2]} end
         end
         S.mod_page()
-        return #differences > 0, tostring(recorded) .. '\n' .. tostring(current)
+        return critical > 0, tostring(recorded) .. '\n' .. tostring(current)
     end
     S.refresh_mods()
 
@@ -389,7 +401,7 @@ return function(log, driver, JSON, deps)
         local differs, signature = S.refresh_mods()
         if differs and (S.confirmed ~= run or S.confirmed_mods ~= signature) then
             S.confirmed, S.confirmed_mods = run, signature
-            S.status('Mods differ. Open Compare Replay Mods. Replay may stop early. Press Start Replay again to continue.')
+            S.status('Critical or unknown mods differ. Replay may stop early. Press Start Replay again to continue.')
             return
         end
         S.confirmed = nil
