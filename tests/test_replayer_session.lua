@@ -540,3 +540,29 @@ session.end_screen_reached()
 assert(session.phase == 'finished')
 session.on_main_menu()
 print('PASS: native completion retains the exact replay and early game-over cannot report successful playback')
+
+-- Steamodded minimum-build warning uses running metadata, not installed files.
+for _, version in ipairs({'1.0.0~BETA-1619z', '1.0.0~BETA-1620', '0.9.9'}) do
+    assert(session.steamodded_supported(version) == false, version)
+end
+for _, version in ipairs({'1.0.0~BETA-1620a', '1.0.0~BETA-1620b', '1.0.0~BETA-1621', '1.0.0', '1.1.0', '26.829.0'}) do
+    assert(session.steamodded_supported(version) == true, version)
+end
+assert(session.steamodded_supported('unknown') == nil)
+local old_runtime = SMODS.version
+manifest.mod_hash = 'Steamodded-1.0.0~BETA-1620a'
+MP.MOD_STRING = 'Steamodded-1.0.0~BETA-1619z'
+assert(session.refresh_mods() and session.steamodded_warning:find('too old', 1, true))
+assert(session.steamodded_loaded == '1.0.0~BETA-1619z')
+SMODS.version = '26.829.0'
+assert(session.refresh_mods() and not session.steamodded_warning, 'running version takes precedence')
+SMODS.version = nil
+MP.MOD_STRING = 'Steamodded-1.0.0~BETA-1620a'
+assert(not session.refresh_mods() and not session.steamodded_warning)
+MP.MOD_STRING = 'Steamodded'
+assert(session.refresh_mods() and session.steamodded_warning:find('could not be verified', 1, true))
+manifest.mod_hash = 'Steamodded-1.0.0~BETA-1619z'
+MP.MOD_STRING = manifest.mod_hash
+assert(session.refresh_mods() and session.steamodded_warning, 'matching old builds still need warning')
+SMODS.version = old_runtime
+print('PASS: Steamodded 1620a boundary, newer versions, unknown versions and running-version precedence')

@@ -189,7 +189,17 @@ G.FUNCS.mprpl_cancel_replay()
 assert(session.phase == 'idle' and not session.confirmed)
 G.FUNCS.mprpl_continue_replay()
 assert(starts == 1, 'cancelled confirmation cannot start')
+session.steamodded_warning = 'Steamodded is too old for this replay.'
+session.steamodded_loaded = '1.0.0~BETA-1619z'
 G.FUNCS.mprpl_start_listed({config = {ref_table = selected}})
+local warning_rows = G.OVERLAY_MENU.contents
+assert(warning_rows[1].nodes[1].config.text == 'Check Steamodded')
+assert(warning_rows[4].nodes[1].config.text:find('too old', 1, true))
+assert(warning_rows[5].nodes[1].config.text == 'Loaded: 1.0.0~BETA-1619z')
+assert(warning_rows[6].nodes[1].config.text:find('1.0.0~BETA-1620a or newer', 1, true))
+assert(warning_rows[7].nodes[1].config.button == 'mprpl_cancel_replay')
+assert(warning_rows[7].nodes[3].config.button == 'mprpl_continue_replay')
+session.steamodded_warning, session.steamodded_loaded = nil, nil
 G.FUNCS.mprpl_continue_replay()
 assert(starts == 3 and session.phase == 'joining')
 session.phase = 'idle'

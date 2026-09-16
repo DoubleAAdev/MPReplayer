@@ -360,6 +360,21 @@ return function(log, driver, JSON, deps)
     local noncritical_mods = {Handy = true, JokerDisplay = true}
     function S.mod_is_critical(id) return not noncritical_mods[id] end
 
+    -- Compare the beta build numerically; newer date-based releases also pass.
+    function S.steamodded_supported(version)
+        if type(version) ~= 'string' then return nil end
+        local major, minor, patch, suffix = version:match('^v?(%d+)%.(%d+)%.(%d+)(.*)$')
+        if not major then return nil end
+        major, minor, patch = tonumber(major), tonumber(minor), tonumber(patch)
+        if major ~= 1 then return major > 1 end
+        if minor > 0 or patch > 0 then return true end
+        if suffix == '' or suffix:sub(1, 1) == '+' then return true end
+        local build, letter = suffix:match('^~BETA%-(%d+)(%a*)$')
+        if not build then return nil end
+        build = tonumber(build)
+        return build > 1620 or (build == 1620 and letter >= 'a')
+    end
+
     -- Compare the manifest with mods loaded by this running game, not files on disk.
     function S.refresh_mods()
         local run = S.runs and S.runs[S.index]
@@ -370,6 +385,7 @@ return function(log, driver, JSON, deps)
         S.mod_missing, S.mod_extra, S.mod_versions = '', '', ''
         S.mod_overview = not run and 'Load a log first' or 'No mod data in this log'
         S.mod_hint = ''
+        S.steamodded_warning, S.steamodded_loaded = nil, nil
         local differences = {}
         local critical = 0
         S.mod_risk = 'Compatibility not assessed'
@@ -397,6 +413,22 @@ return function(log, driver, JSON, deps)
             S.mod_overview = #differences == 0 and 'Mods match' or (#differences .. (#differences == 1 and ' difference' or ' differences'))
             S.mod_hint = critical > 0 and 'May affect replay' or (#differences > 0 and 'Display / controls only' or '')
         end
+        local loaded = type(current) == 'string' and mods_of(current) or {}
+        local logged = type(recorded) == 'string' and mods_of(recorded) or {}
+        local version = (SMODS and SMODS.version) or loaded.Steamodded
+        if run and (version ~= nil or logged.Steamodded ~= nil) then
+            local supported = S.steamodded_supported(version)
+            if supported ~= true then
+                S.steamodded_loaded = version and version ~= '' and version or 'Unknown'
+                S.steamodded_warning = supported == false and 'Steamodded is too old for this replay.'
+                    or 'Steamodded compatibility could not be verified.'
+                critical = math.max(critical, 1)
+                S.mod_risk, S.mod_hint = 'Steamodded compatibility warning', 'Steamodded 1620a or newer needed'
+                if #differences == 0 then
+                    S.mod_overview, S.mod_summary = 'Check Steamodded version', S.steamodded_warning
+                end
+            end
+        end
         for _, entry in ipairs(differences) do
             local lines = {}
             for _, line in ipairs(entry) do
@@ -405,7 +437,7 @@ return function(log, driver, JSON, deps)
             for start = 1, #lines, 3 do S.mod_pages[#S.mod_pages + 1] = {lines[start], lines[start + 1], lines[start + 2]} end
         end
         S.mod_page()
-        return critical > 0, tostring(recorded) .. '\n' .. tostring(current)
+        return critical > 0, tostring(recorded) .. '\n' .. tostring(current) .. '\n' .. tostring(version)
     end
     S.refresh_mods()
 

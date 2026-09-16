@@ -81,3 +81,6 @@ __pycache__/
 
 # Local replay-summary visual checks
 /end-screen-qa/
+
+# Local Steamodded compatibility checks
+/steamodded-qa/

@@ -212,12 +212,19 @@ return function(mod, JSON)
             return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
                 {n = G.UIT.T, config = {text = text, scale = scale or 0.38, colour = G.C.WHITE, shadow = true}}}}
         end
-        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{no_back = true, contents = {
-            message('Mods differ', 0.55),
+        local rows = {
+            message(session.steamodded_warning and 'Check Steamodded' or 'Mods differ', 0.55),
             message('Some mods may affect this replay.'),
             message('It may play differently or stop early.'),
-            buttons(button('Cancel', 'mprpl_cancel_replay', nil, G.C.RED), button('Continue', 'mprpl_continue_replay', nil, G.C.GREEN)),
-        }}}
+        }
+        if session.steamodded_warning then
+            rows[#rows + 1] = message(session.steamodded_warning, 0.34)
+            rows[#rows + 1] = message('Loaded: ' .. tostring(session.steamodded_loaded):sub(1, 42), 0.34)
+            rows[#rows + 1] = message('Use Steamodded 1.0.0~BETA-1620a or newer.', 0.34)
+        end
+        rows[#rows + 1] = buttons(button('Cancel', 'mprpl_cancel_replay', nil, G.C.RED),
+            button('Continue', 'mprpl_continue_replay', nil, G.C.GREEN))
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{no_back = true, contents = rows}}
         -- Escape closes the popup without starting; a fresh Start always asks again.
     end
     G.FUNCS.mprpl_details_back = show_replays
