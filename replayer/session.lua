@@ -44,7 +44,7 @@ return function(log, driver, JSON, deps)
     end
 
     -- Bound every visible line; full diagnostic text remains in status.json.
-    local WIDTH = 52
+    local WIDTH = 40
     local function wrap(text)
         local lines, line = {}, ''
         for word in tostring(text):gmatch('%S+') do
@@ -151,8 +151,27 @@ return function(log, driver, JSON, deps)
 
     -- Lists the chosen run's actions where the player can read them, in the
     -- layout of their filter script, and names the run in the status.
+    local function short(value, limit)
+        local text = tostring(value or ''):gsub('[%c]', ' ')
+        return #text > limit and (text:sub(1, limit - 3) .. '...') or text
+    end
+    function S.label_run()
+        local run = S.runs and S.runs[S.index]
+        if not run then
+            S.replay_title, S.replay_players, S.replay_setup = 'No replay selected', 'Choose Load Log to get started', ''
+            return
+        end
+        local m = run.manifest
+        S.replay_title = 'Replay ' .. tostring(run.label_number or S.index) .. '  (' .. S.index .. ' of ' .. #S.runs .. ')'
+        S.replay_players = short(m.player or 'Unknown player', 18) .. ' vs ' .. short(m.opponent or 'Unknown opponent', 18)
+        local deck = ((G.P_CENTERS or {})[m.deck] or {}).name or m.deck
+        S.replay_setup = short(deck, 12) .. ' / Stake ' .. tostring(m.stake) .. ' / ' .. short(m.seed, 12)
+        S.replay_title = S.replay_title .. (run.replayed and ' - old replay' or (run.complete and ' - complete' or ' - partial'))
+    end
+    S.label_run()
     local function show_run()
         local run = S.runs[S.index]
+        S.label_run()
         S.confirmed = nil
         S.refresh_mods()
         pcall(function()
@@ -166,6 +185,7 @@ return function(log, driver, JSON, deps)
     function S.load(text)
         assert(S.phase == 'idle', 'Finish the current replay before loading another log')
         S.runs = log.parse(text)
+        for number, run in ipairs(S.runs) do run.label_number = number end
         S.index = 1
         show_run()
     end
@@ -174,6 +194,23 @@ return function(log, driver, JSON, deps)
         if not S.runs or S.phase ~= 'idle' then return end
         S.index = S.index % #S.runs + 1
         show_run()
+    end
+
+    function S.remove_run()
+        if not S.runs then return end
+        if S.phase ~= 'idle' then S.stop() end
+        table.remove(S.runs, S.index)
+        S.confirmed, S.confirmed_mods = nil, nil
+        if #S.runs == 0 then
+            S.runs, S.index = nil, 1
+            S.label_run()
+            S.refresh_mods()
+            pcall(function() love.filesystem.write(directory .. '/actions.txt', '') end)
+            S.status('Replay removed. Load a log to choose another.')
+        else
+            S.index = math.min(S.index, #S.runs)
+            show_run()
+        end
     end
 
     local function validate(run)
@@ -241,7 +278,8 @@ return function(log, driver, JSON, deps)
         local recorded = run and run.manifest.mod_hash
         local current = MP and MP.MOD_STRING
         S.mod_pages, S.mod_page_index = {}, 1
-        S.mod_summary = not run and 'Mods: load a log to compare' or 'Mods: comparison unavailable'
+        S.mod_summary = not run and 'Load a replay to compare mods' or 'Mod information unavailable'
+        S.mod_missing, S.mod_extra, S.mod_versions = '', '', ''
         local differences = {}
         if type(recorded) == 'string' and recorded ~= '' and type(current) == 'string' and current ~= '' then
             local logged, loaded = mods_of(recorded), mods_of(current)
@@ -253,6 +291,9 @@ return function(log, driver, JSON, deps)
             for id in pairs(loaded) do if logged[id] == nil then extra[#extra + 1] = id end end
             table.sort(missing); table.sort(extra); table.sort(changed)
             S.mod_summary = 'Missing: ' .. #missing .. ' | Extra: ' .. #extra .. ' | Versions: ' .. #changed
+            S.mod_missing = 'Missing from this game: ' .. #missing
+            S.mod_extra = 'Extra in this game: ' .. #extra
+            S.mod_versions = 'Different versions: ' .. #changed
             for _, id in ipairs(missing) do differences[#differences + 1] = {'Missing: ' .. id, 'Log: ' .. logged[id], 'Loaded: absent'} end
             for _, id in ipairs(extra) do differences[#differences + 1] = {'Extra: ' .. id, 'Log: absent', 'Loaded: ' .. loaded[id]} end
             for _, id in ipairs(changed) do differences[#differences + 1] = {'Version: ' .. id, 'Log: ' .. logged[id], 'Loaded: ' .. loaded[id]} end
@@ -279,7 +320,7 @@ return function(log, driver, JSON, deps)
         local differs, signature = S.refresh_mods()
         if differs and (S.confirmed ~= run or S.confirmed_mods ~= signature) then
             S.confirmed, S.confirmed_mods = run, signature
-            S.status('Mods differ; see the details below. Replay may stop early. Press Start Replay again to continue.')
+            S.status('Mods differ. Open Mod Details. Replay may stop early. Press Start Replay again to continue.')
             return
         end
         S.confirmed = nil

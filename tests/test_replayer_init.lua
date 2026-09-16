@@ -18,27 +18,38 @@ SMODS = {load_file = function(path, id)
 end}
 local text = ':: MULTIPLAYER :: MP_RLOG: MANIFEST {}\n:: MULTIPLAYER :: MP_RLOG: 1 reroll\n:: MULTIPLAYER :: Client sent message: action:rerollShop,cost:5\n'
 NFS = {getInfo = function() return {type = 'file', size = #text} end, read = function(path) assert(path == 'picked.log'); return text end}
+function UIBox_button(args)
+    return {n = G.UIT.C, config = {button = args.button, minw = args.minw, minh = args.minh}, nodes = {
+        {n = G.UIT.T, config = {text = args.label[1], scale = args.scale}}}}
+end
+function create_UIBox_generic_options(args) return args end
+G.FUNCS.overlay_menu = function(args) G.OVERLAY_MENU = args.definition end
 local mod = {id = 'BalatroReplayer'}
 local session = dofile('replayer/init.lua')(mod, JSON)
 assert(BalatroReplayer == session and session.phase == 'idle')
 
--- The mod's config tab: four status lines and four buttons.
+-- Larger native controls, identity fields and separate mod details.
 local tab = mod.config_tab()
-assert(tab.n == G.UIT.ROOT and #tab.nodes == 10)
-for i, line in ipairs({'line1', 'line2', 'line3', 'line4'}) do
-    assert(tab.nodes[i].nodes[1].config.ref_table == session and tab.nodes[i].nodes[1].config.ref_value == line)
-end
-assert(session.line1:find('Load Log'), 'the first status is already on the lines')
+assert(tab.n == G.UIT.ROOT and #tab.nodes == 11)
+assert(tab.nodes[1].nodes[1].config.ref_value == 'replay_title')
+assert(tab.nodes[1].nodes[1].config.scale >= 0.4)
 local buttons = {}
-for _, node in ipairs(tab.nodes[5].nodes) do buttons[#buttons + 1] = node.config.button end
-assert(table.concat(buttons, ',') == 'brpl_load,brpl_next,brpl_start,brpl_end')
-for _, name in ipairs(buttons) do assert(type(G.FUNCS[name]) == 'function') end
-
-assert(tab.nodes[6].nodes[1].config.ref_value == 'mod_summary')
-assert(tab.nodes[10].nodes[1].config.button == 'brpl_mod_prev')
-assert(tab.nodes[10].nodes[3].config.button == 'brpl_mod_next')
-G.FUNCS.brpl_mod_prev(); G.FUNCS.brpl_mod_next()
-assert(session.mod_summary == 'Mods: load a log to compare')
+local function scan(node)
+    if node.config and node.config.button then
+        buttons[node.config.button] = true
+        assert(node.config.minh >= 0.65)
+        assert(node.nodes[1].config.scale >= 0.4)
+    end
+    for _, child in ipairs(node.nodes or {}) do scan(child) end
+end
+scan(tab)
+for _, name in ipairs({'brpl_load','brpl_next','brpl_start','brpl_remove','brpl_details'}) do assert(buttons[name] and G.FUNCS[name]) end
+assert(not buttons.brpl_end and not buttons.brpl_mod_next)
+G.FUNCS.brpl_details()
+assert(G.OVERLAY_MENU.back_func == 'brpl_details_back')
+G.FUNCS.brpl_details_back()
+assert(G.OVERLAY_MENU.back_func == 'openModUI_BalatroReplayer')
+G.OVERLAY_MENU = nil
 
 -- Loading through the picker, cancelling, and dropping a file.
 G.FUNCS.brpl_load()
@@ -63,6 +74,27 @@ G.FUNCS.brpl_start()
 assert(session.phase == 'idle' and session.text:find('Multiplayer is required'), session.text)
 G.FUNCS.brpl_next()
 assert(session.index == 1, 'a single run has nothing to cycle')
+
+-- Stable replay numbering survives removals and the final removal clears selection.
+session.load(text .. text)
+assert(#session.runs == 2 and session.runs[2].label_number == 2)
+G.FUNCS.brpl_remove()
+assert(#session.runs == 1 and session.runs[1].label_number == 2 and session.replay_title:find('Replay 2'))
+assert(session.confirmed == nil and session.replay_setup:find('TEST'))
+G.FUNCS.brpl_remove()
+assert(session.runs == nil and session.replay_title == 'No replay selected')
+assert(writes['balatro_replayer/actions.txt'] == '')
+G.FUNCS.brpl_next(); G.FUNCS.brpl_remove()
+assert(not pcall(session.start), 'empty selection cannot start')
+session.load(text)
+assert(session.runs[1].label_number == 1)
+local old_stop = session.stop
+local removed_active = false
+session.stop = function() removed_active = true; session.phase = 'idle' end
+session.phase = 'running'
+G.FUNCS.brpl_remove()
+assert(removed_active and session.runs == nil)
+session.stop = old_stop
 
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end

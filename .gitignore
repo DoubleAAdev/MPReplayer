@@ -42,3 +42,6 @@ __pycache__/
 # Local patch recovery artifacts
 *.orig
 *.rej
+
+# Local UI layout captures
+/ui-captures/

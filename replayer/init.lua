@@ -38,6 +38,10 @@ return function(mod, JSON)
             session.load(assert(NFS.read(path), 'Could not read the selected log'))
         end)
     end
+    G.FUNCS.brpl_remove = function()
+        protect(session.remove_run)
+        guard().update()
+    end
     G.FUNCS.brpl_next = function() protect(session.next_run) end
     G.FUNCS.brpl_start = function()
         protect(session.start)
@@ -96,32 +100,48 @@ return function(mod, JSON)
         end
     end
 
-    local previous_tab = mod.config_tab
+    -- Native UIBox buttons use Balatro's font, shadows, sizing and focus rules.
+    local function row(field, scale)
+        return {n = G.UIT.R, config = {align = 'cm', padding = 0.025}, nodes = {
+            {n = G.UIT.T, config = {ref_table = session, ref_value = field, scale = scale or 0.38, colour = G.C.WHITE, shadow = true}}}}
+    end
+    local function button(label, callback, width, colour)
+        return UIBox_button{label = {label}, button = callback, minw = width or 3.1,
+            minh = 0.65, scale = 0.42, colour = colour or G.C.BLUE, col = true}
+    end
+    local function buttons(left, right)
+        return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
+            left, {n = G.UIT.C, config = {minw = 0.12}}, right}}
+    end
+    G.FUNCS.brpl_details_back = function()
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{
+            back_func = 'openModUI_' .. mod.id, contents = {mod.config_tab()}}}
+    end
+    G.FUNCS.brpl_details = function()
+        session.refresh_mods()
+        local rows = {
+            {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
+                {n = G.UIT.T, config = {text = 'Replay Mod Details', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
+            row('replay_title', 0.4),
+            row('mod_missing'), row('mod_extra'), row('mod_versions'),
+        }
+        if session.mod_missing == '' then rows[#rows + 1] = row('mod_summary') end
+        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
+            {n = G.UIT.T, config = {text = 'Recorded in log / Loaded in this game', scale = 0.35, colour = G.C.WHITE}}}}
+        for _, field in ipairs({'mod_detail1', 'mod_detail2', 'mod_detail3', 'mod_position'}) do rows[#rows + 1] = row(field) end
+        rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'brpl_details_back', contents = rows}}
+    end
     mod.config_tab = function()
-        local tab = previous_tab and previous_tab() or {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.2}, nodes = {}}
-        for _, line in ipairs({'line1', 'line2', 'line3', 'line4'}) do
-            tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.02}, nodes = {
-                {n = G.UIT.T, config = {ref_table = session, ref_value = line, scale = 0.26, colour = G.C.WHITE}}}}
-        end
-        local buttons = {}
-        for _, item in ipairs({{'Load Log', 'brpl_load'}, {'Next Run', 'brpl_next'}, {'Start Replay', 'brpl_start'}, {'End Replay', 'brpl_end'}}) do
-            buttons[#buttons + 1] = {n = G.UIT.C, config = {align = 'cm', button = item[2], colour = G.C.BLUE, padding = 0.12, r = 0.1, hover = true, shadow = true},
-                nodes = {{n = G.UIT.T, config = {text = item[1], scale = 0.28, colour = G.C.WHITE}}}}
-        end
-        tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = buttons}
-        for _, field in ipairs({'mod_summary', 'mod_detail1', 'mod_detail2', 'mod_detail3'}) do
-            tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.02}, nodes = {
-                {n = G.UIT.T, config = {ref_table = session, ref_value = field, scale = 0.24, colour = G.C.WHITE}}}}
-        end
-        local navigation = {}
-        for _, item in ipairs({{'<', 'brpl_mod_prev'}, {'>', 'brpl_mod_next'}}) do
-            navigation[#navigation + 1] = {n = G.UIT.C, config = {align = 'cm', button = item[2], colour = G.C.BLUE, padding = 0.08, r = 0.1, hover = true},
-                nodes = {{n = G.UIT.T, config = {text = item[1], scale = 0.26, colour = G.C.WHITE}}}}
-        end
-        table.insert(navigation, 2, {n = G.UIT.C, config = {align = 'cm', padding = 0.08}, nodes = {
-            {n = G.UIT.T, config = {ref_table = session, ref_value = 'mod_position', scale = 0.24, colour = G.C.WHITE}}}})
-        tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = navigation}
-        return tab
+        session.label_run()
+        local rows = {row('replay_title', 0.42), row('replay_players', 0.38), row('replay_setup', 0.34)}
+        for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do rows[#rows + 1] = row(field, 0.32) end
+        rows[#rows + 1] = buttons(button('Load Log', 'brpl_load'), button('Next Replay', 'brpl_next'))
+        rows[#rows + 1] = buttons(button('Start Replay', 'brpl_start', nil, G.C.GREEN), button('Remove Replay', 'brpl_remove', nil, G.C.RED))
+        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {button('Mod Details', 'brpl_details', 6.3)}}
+        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {
+            {n = G.UIT.T, config = {text = 'Remove Replay clears this list entry; the log is kept.', scale = 0.28, colour = G.C.WHITE}}}}
+        return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
     end
     return session
 end

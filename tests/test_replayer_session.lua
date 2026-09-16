@@ -134,7 +134,7 @@ assert(joined:find(string.rep('LongName', 40), 1, true), 'long names are not los
 -- Unknown metadata is visibly different from a confirmed match.
 manifest.mod_hash = nil
 session.refresh_mods()
-assert(session.mod_summary == 'Mods: comparison unavailable' and #session.mod_pages == 0)
+assert(session.mod_summary == 'Mod information unavailable' and #session.mod_pages == 0)
 manifest.mod_hash, MP.MOD_STRING = recorded_mods, loaded_mods
 session.refresh_mods()
 -- A changed loaded set must not reuse the previous confirmation.
