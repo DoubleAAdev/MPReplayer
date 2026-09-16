@@ -56,6 +56,23 @@ return function(log)
         return card
     end
 
+    -- Multiplayer logs no drags in the consumable rack, only the slot a card
+    -- is used or sold from, with its name. When another card holds that slot
+    -- and the named one sits elsewhere, the player dragged it: move it there.
+    local function rack_drag(slot, name)
+        local list = cards_of(G.consumeables)
+        if not list or not name or not list[slot] or card_name(list[slot]) == name then return end
+        for i, card in ipairs(list) do
+            -- ponytail: first card with the name; same-name cards differing in edition would need more.
+            if card_name(card) == name then
+                table.insert(list, slot, table.remove(list, i))
+                if G.consumeables.set_ranks then G.consumeables:set_ranks() end
+                if G.consumeables.align_cards then G.consumeables:align_cards() end
+                return
+            end
+        end
+    end
+
     -- Ask one of the game's can_* checks whether the button would be live.
     local function probe(check, card, id)
         local e = {config = {ref_table = card, id = id}, UIBox = {states = {visible = true}, alignment = {offset = {}}}}
@@ -288,6 +305,7 @@ return function(log)
         if entry.after_cash_out and state_is('ROUND_EVAL') then return leave_round_eval() end
         local area_name = areas[tonumber(entry.args[1])]
         if area_name ~= 'jokers' and area_name ~= 'consumeables' then error('sell from ' .. tostring(area_name) .. ' is not possible') end
+        if area_name == 'consumeables' then rack_drag(tonumber(entry.args[2]), log.expectation(entry).name) end
         local card, why = card_at(area_name, tonumber(entry.args[2]), log.expectation(entry).name)
         if not card then error(why) end
         if card.can_sell_card and not card:can_sell_card() then
@@ -307,6 +325,7 @@ return function(log)
         local name = log.expectation(entry).name
         if not name then error('the log does not name the card used at slot ' .. slot) end
         local candidates = {'consumeables'}
+        rack_drag(slot, name)
         if state_is('SHOP') then candidates = {'consumeables', 'shop_booster', 'shop_vouchers'} end
         local card, area_name
         for _, candidate in ipairs(candidates) do

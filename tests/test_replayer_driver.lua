@@ -175,7 +175,13 @@ G.FUNCS.buy_from_shop = record('buy_from_shop')
 assert(driver.perform(entry('use', {'1'}, 'usedCard,card:Buffoon Pack')) == 'done' and select(2, last()).config.ref_table == G.shop_booster.cards[1])
 assert(driver.perform(entry('use', {'1'}, 'usedCard,card:Overstock')) == 'done' and select(2, last()).config.ref_table == G.shop_vouchers.cards[1])
 assert(driver.perform(entry('use', {'2'}, 'usedCard,card:Mars')) == 'done' and select(2, last()).config.ref_table == G.consumeables.cards[2])
-fails(function() driver.perform(entry('use', {'1'}, 'usedCard,card:Mars')) end, 'no Mars to use: consumeables slot 1 holds The Fool; shop_booster slot 1 holds Buffoon Pack; shop_vouchers slot 1 holds Overstock')
+fails(function() driver.perform(entry('use', {'1'}, 'usedCard,card:Jupiter')) end, 'no Jupiter to use: consumeables slot 1 holds The Fool; shop_booster slot 1 holds Buffoon Pack; shop_vouchers slot 1 holds Overstock')
+-- Rack drags are not logged: a named card in another slot is moved to the logged one.
+local fool, mars = G.consumeables.cards[1], G.consumeables.cards[2]
+assert(driver.perform(entry('use', {'1'}, 'usedCard,card:Mars')) == 'done' and select(2, last()).config.ref_table == mars)
+assert(G.consumeables.cards[1] == mars and G.consumeables.cards[2] == fool, 'Mars was dragged to slot 1')
+assert(driver.perform(entry('sell', {'5', '1'}, 'soldCard,card:The Fool')) == 'done' and select(2, last()).config.ref_table == fool)
+assert(G.consumeables.cards[1] == fool and G.consumeables.cards[2] == mars, 'a sale drags the same way')
 fails(function() driver.perform(entry('use', {'1'})) end, 'does not name the card')
 MP.GAME.ready_blind = true
 fails(function() driver.perform(entry('use', {'1'}, 'usedCard,card:Buffoon Pack')) end, 'refuses to use Buffoon Pack')
@@ -225,7 +231,7 @@ status, why = driver.perform(entry('sell', {'4', '2'}, 'soldCard,card:Misprint')
 assert(status == 'wait' and why:find('does not allow selling'))
 sold.can_sell_card = function() return true end
 assert(driver.perform(entry('sell', {'4', '2'}, 'soldCard,card:Misprint')) == 'done' and select(2, last()).config.ref_table == sold)
-fails(function() driver.perform(entry('sell', {'5', '1'}, 'soldCard,card:Mars')) end, 'holds The Fool, log says Mars')
+fails(function() driver.perform(entry('sell', {'5', '1'}, 'soldCard,card:Jupiter')) end, 'holds The Fool, log says Jupiter')
 fails(function() driver.perform(entry('sell', {'1', '1'}, 'soldCard,card:Mars')) end, 'not possible')
 
 -- reroll must cost what the log paid.
