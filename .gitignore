@@ -2,6 +2,10 @@
 __pycache__/
 *.pyc
 
+# Local test suites and their runner
+/tests/
+/scripts/run-lua-tests.py
+
 # Replay status and action lists, if Balatro's save folder is ever pointed here
 /mp_replayer/
 

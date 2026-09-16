@@ -13,10 +13,6 @@ It was part of Balatro Observer until version 1.10.0 and moved here unchanged.
 
 Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts/install.ps1`, which copies the mod files there and verifies each one. Restart Balatro.
 
-## Tests
-
-`python scripts/run-lua-tests.py` runs every suite in `tests/` with Balatro's own LuaJIT.
-
 ## Use
 
 1. Open **Mods > MP Replayer > Replays**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before MP Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
