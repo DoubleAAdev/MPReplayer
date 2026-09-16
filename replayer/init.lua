@@ -226,7 +226,7 @@ return function(mod, JSON)
                         {n = G.UIT.C, config = {align = 'cm', colour = dyn.BOSS_DARK or G.C.BLACK, r = 0.08, minw = 0.95, minh = 0.42}, nodes = {
                             {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.34, colour = G.C.WHITE, shadow = true}}}},
                         arrow('>', 'mprpl_speed_up')}}}}}},
-                config = {align = 'tm', offset = {x = 0, y = -1.2}, major = G.deck, bond = 'Weak'}}
+                config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
 
