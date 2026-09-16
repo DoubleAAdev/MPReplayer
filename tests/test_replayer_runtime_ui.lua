@@ -16,6 +16,8 @@ G = {UIT = {ROOT = 'ROOT', R = 'R', C = 'C', T = 'T', O = 'O'},
     STAGES = {RUN = 1, MAIN_MENU = 2}, STATE = 2, STATES = {MENU = 1},
     E_MANAGER = {add_event = function() end}, FUNCS = {}}
 MP = {LOBBY = {code = 'REPLAY'}}
+-- Installed mods patch this source but are not loaded here; Malverk adds a button colour.
+Malverk = {}
 function localize(value) return value end
 function Event(value) return value end
 function Moveable() return {} end
