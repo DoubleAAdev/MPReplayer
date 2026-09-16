@@ -681,9 +681,12 @@ return function(log, driver, JSON, deps)
             if resolving or busy() or now - (session.consumed or 0) < SETTLE then
                 -- A drag logged while the hand scores must happen while it scores:
                 -- after the last PvP hand the leftover cards are gone by the time
-                -- scoring settles, and endPvP waits behind the reorder.
+                -- scoring settles, and endPvP waits behind the reorder. Only while
+                -- scoring: during a draw the hand's size changes, and Multiplayer
+                -- ignores a reorder that lands on the same frame as a size change.
                 local next_entry = session.entries[session.cursor]
-                if next_entry and next_entry.op == 'reorder' and not session.issued then
+                if next_entry and next_entry.op == 'reorder' and not session.issued
+                    and session.hand_pending.op == 'play' and state == 'HAND_PLAYED' then
                     local cursor = session.cursor
                     local ok, result = pcall(driver.perform, next_entry, session.entries)
                     if ok and result == 'done' and session.cursor == cursor and not session.failure then session.issued = now end

@@ -559,6 +559,35 @@ assert(reorder_calls==1)
 session.on_main_menu()
 print('PASS: a hand reorder logged during last-hand scoring does not deadlock endPvP')
 
+-- A reorder after a discard waits for the redraw to settle, as before.
+local drag_calls=0
+session.runs[1].entries={
+ {kind='action',op='discard',args={'1.5.6.7.10'},text='discard 1.5.6.7.10',seq=128,line=2966},
+ {kind='action',op='reorder',args={'6','9.1.2.3.4.5.6.7.8.10'},text='reorder 6 9.1.2.3.4.5.6.7.8.10',seq=129,line=2969},
+}
+session.runs[1].actions=2
+driver.state_name=function() return G.STATE==3 and 'DRAW_TO_HAND' or 'SELECTING_HAND' end
+driver.perform=function(entry)
+ if entry.op=='discard' then
+  MP.RLOG.record('discard',{{1,5,6,7,10}})
+  G.STATE=3;G.hand={cards={1,2,3,4,5,6,7,8,9,10}};G.play={cards={}}
+ else
+  if G.STATE==3 then drag_calls=drag_calls+100 end
+  drag_calls=drag_calls+1
+  MP.RLOG.record('reorder',{6,{9,1,2,3,4,5,6,7,8,10}})
+ end
+ return 'done'
+end
+begin()
+for i=1,3 do now=now+1;session.update(.1) end
+assert(drag_calls==0,session.text)
+G.STATE=1
+for i=1,4 do now=now+1;session.update(.1) end
+assert(drag_calls==1 and session.phase=='finished',session.text)
+session.on_main_menu()
+driver.state_name=function() return 'HAND_PLAYED' end
+print('PASS: a reorder after a discard waits for the redraw')
+
 -- Native end-screen creation can happen before the next replay update.
 assert(session.active_run() == nil)
 begin()
