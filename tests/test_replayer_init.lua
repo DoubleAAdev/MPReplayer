@@ -29,7 +29,25 @@ local session = dofile('replayer/init.lua')(mod, JSON)
 assert(BalatroReplayer == session and session.phase == 'idle')
 
 -- One Replays tab replaces Config, with the two primary controls above the list.
-assert(mod.config_tab == nil)
+assert(type(mod.config_tab) == 'function', 'native mod-list gear requires a config callback')
+local menu_calls = 0
+function create_UIBox_mods()
+    menu_calls = menu_calls + 1
+    if G.ACTIVE_MOD_UI == mod then
+        assert(mod.config_tab == nil, 'the actual menu must not contain Config')
+        assert(SMODS.LAST_SELECTED_MOD_TAB == 'BalatroReplayer_1')
+    end
+    return 'native_menu'
+end
+Game:update(0)
+G.ACTIVE_MOD_UI = mod
+SMODS.LAST_SELECTED_MOD_TAB = 'config'
+assert(create_UIBox_mods() == 'native_menu')
+assert(type(mod.config_tab) == 'function', 'gear eligibility is restored after menu creation')
+G.ACTIVE_MOD_UI = {}
+assert(create_UIBox_mods() == 'native_menu')
+G.ACTIVE_MOD_UI = nil
+assert(menu_calls == 2)
 local tab = mod.extra_tabs()[1].tab_definition_function()
 assert(mod.extra_tabs()[1].label == 'Replays')
 assert(tab.nodes[1].nodes[1].config.button == 'brpl_load')

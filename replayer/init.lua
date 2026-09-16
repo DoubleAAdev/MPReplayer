@@ -13,7 +13,27 @@ return function(mod, JSON)
     })
     -- Install after all mods have registered their input hooks.
     local input_guard
+    local menu_hooked = false
+    local function install_menu_hook()
+        if menu_hooked or type(create_UIBox_mods) ~= 'function' then return end
+        menu_hooked = true
+        local original = create_UIBox_mods
+        create_UIBox_mods = function(...)
+            if G.ACTIVE_MOD_UI ~= mod then return original(...) end
+            -- Keep Steamodded's native gear, but suppress its separate Config tab.
+            local config_tab = mod.config_tab
+            mod.config_tab = nil
+            if SMODS.LAST_SELECTED_MOD_TAB == 'config' then
+                SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
+            end
+            local ok, result = pcall(original, ...)
+            mod.config_tab = config_tab
+            if not ok then error(result, 0) end
+            return result
+        end
+    end
     local function guard()
+        install_menu_hook()
         if not input_guard then input_guard = load('input-guard.lua')(session) end
         return input_guard
     end
@@ -149,7 +169,7 @@ return function(mod, JSON)
         rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
         G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'brpl_details_back', contents = rows}}
     end
-    mod.config_tab = nil
+    mod.config_tab = function() return mod.extra_tabs()[1].tab_definition_function() end
     if SMODS.LAST_SELECTED_MOD_TAB == 'config' then SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1' end
     local function text(value, scale, colour)
         return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
