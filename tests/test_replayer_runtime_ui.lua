@@ -37,7 +37,7 @@ local before = collect(create_UIBox_options())
 assert(before.lobby_leave == 1 and before.mp_return_to_lobby == 1, 'expected installed Multiplayer exit controls')
 local transformed = guard.rewrite(create_UIBox_options())
 local after = collect(transformed)
-assert(after.brpl_end == 1 and not after.lobby_leave and not after.mp_return_to_lobby and not after.mp_unstuck)
+assert(after.mprpl_end == 1 and not after.lobby_leave and not after.mp_return_to_lobby and not after.mp_unstuck)
 assert(after.exit_overlay_menu == 1, 'the pause menu must still close')
 G.OVERLAY_MENU = {}
 local function check_clicks(node)
@@ -51,12 +51,12 @@ check_clicks(transformed)
 G.OVERLAY_MENU = nil
 assert(UIElement.click({config = {button = 'lobby_info'}}) == 'lobby_info')
 local function find_end(node)
-    if node.config and node.config.button == 'brpl_end' then return node end
+    if node.config and node.config.button == 'mprpl_end' then return node end
     for _, child in pairs(node.nodes or {}) do local found = find_end(child); if found then return found end end
 end
 assert(find_end(transformed).nodes[1].nodes[1].config.scale == 0.5, 'End Replay inherits native font size')
 assert(find_end(transformed).nodes[1].config.minw == 5, 'End Replay retains the original pause-button width')
 session.phase = 'idle'
 local restored = collect(guard.rewrite(create_UIBox_options()))
-assert(restored.lobby_leave == 1 and restored.mp_return_to_lobby == 1 and not restored.brpl_end)
+assert(restored.lobby_leave == 1 and restored.mp_return_to_lobby == 1 and not restored.mprpl_end)
 print('PASS: installed Multiplayer pause definition has one full-width End Replay and restores both normal lobby controls')
