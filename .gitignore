@@ -26,3 +26,7 @@ __pycache__/
 
 # Local crash diagnostics
 *.dmp
+
+# Local UI regression captures
+/test-results/
+/playwright-report/

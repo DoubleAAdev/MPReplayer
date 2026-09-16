@@ -1,3 +1,9 @@
+## 2.1.0
+
+- Replace the overflowing mod mismatch error with missing, extra, and changed-version counts and paged details of logged versus loaded mods.
+- Keep the two-press Start Replay confirmation; changing the selected run or loaded mod list requires fresh confirmation.
+- Bound all four status lines, retaining complete diagnostics in status.json.
+
 # 2.0.5
 
 - Fix a deadlock after the final PvP hand: Multiplayer intentionally waits in HAND_PLAYED for the opponent result.

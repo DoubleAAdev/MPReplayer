@@ -99,13 +99,55 @@ assert(session.phase == 'idle' and MP.LOBBY.config == original_config and Client
 manifest.mod_hash = 'preview=false;unlocked=true;encryptID=1;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
 MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'
 ok, err = pcall(session.start)
-assert(not ok and err:find('^Mods differ from the log: the log had Handy%-2%.0%.5, Steamodded%-1%.0%.0~BETA%-1620a; this game has Handy%-2%.0%.6, Steamodded%-26%.829%.0, takanatro%-1%.0%.0%.')
-    and err:find('Press Start Replay again'), err)
+assert(ok, err)
+assert(session.text:find('Press Start Replay again'), session.text)
+assert(session.mod_summary == 'Missing: 0 | Extra: 1 | Versions: 2', session.mod_summary)
+assert(session.mod_detail1 == 'Extra: takanatro')
+session.mod_page(1)
+assert(session.mod_detail1 == 'Version: Handy' and session.mod_detail2 == 'Log: 2.0.5' and session.mod_detail3 == 'Loaded: 2.0.6')
 assert(session.phase == 'idle' and Client.send == original_send, 'nothing starts on the first press')
--- The status wraps onto the config tab's lines without losing a word.
-session.status(err)
-assert(#session.line1 <= 60 and #session.line2 <= 60 and #session.line3 <= 60 and session.line4 ~= '')
-assert(session.line1 .. ' ' .. session.line2 .. ' ' .. session.line3 .. ' ' .. session.line4 == err)
+-- Long diagnostics cannot grow any of the four visible lines.
+session.status(string.rep('x', 500))
+for _, key in ipairs({'line1', 'line2', 'line3', 'line4'}) do assert(#session[key] <= 52) end
+assert(#session.text == 500, 'full diagnostic is retained')
+
+-- Missing/extra/version categories stay distinct, including hyphenated IDs.
+local recorded_mods, loaded_mods = manifest.mod_hash, MP.MOD_STRING
+manifest.mod_hash = 'Preview-MultiplayerIntegration;Missing-1.2;Hyphen-Mod-1.0;Steamodded-1.0.0~BETA-1620a'
+MP.MOD_STRING = 'Hyphen-Mod-2.0;Steamodded-26.829.0;Extra-1.0'
+session.refresh_mods()
+assert(session.mod_summary == 'Missing: 2 | Extra: 1 | Versions: 2')
+assert(session.mod_detail1 == 'Missing: Missing')
+session.mod_page(-1)
+assert(session.mod_detail1 == 'Version: Steamodded')
+session.mod_page(1)
+assert(session.mod_detail1 == 'Missing: Missing')
+-- Arbitrarily long names/versions are fully accessible on bounded pages.
+manifest.mod_hash = string.rep('LongName', 40) .. '-1.0'
+MP.MOD_STRING = 'Other-1.0'
+session.refresh_mods()
+local joined = ''
+for _, page in ipairs(session.mod_pages) do
+    for _, line in ipairs(page) do assert(#line <= 52); joined = joined .. line end
+end
+assert(joined:find(string.rep('LongName', 40), 1, true), 'long names are not lost')
+-- Unknown metadata is visibly different from a confirmed match.
+manifest.mod_hash = nil
+session.refresh_mods()
+assert(session.mod_summary == 'Mods: comparison unavailable' and #session.mod_pages == 0)
+manifest.mod_hash, MP.MOD_STRING = recorded_mods, loaded_mods
+session.refresh_mods()
+-- A changed loaded set must not reuse the previous confirmation.
+MP.MOD_STRING = loaded_mods .. ';Another-1.0'
+session.start()
+assert(session.phase == 'idle' and session.confirmed_mods:find('Another-1.0', 1, true))
+MP.MOD_STRING = loaded_mods
+session.start()
+assert(session.phase == 'idle', 'changed mods require another confirmation')
+session.next_run()
+assert(session.confirmed == nil, 'selecting a run clears confirmation')
+session.start()
+assert(session.phase == 'idle', 'first press after selecting is still a confirmation')
 
 -- Pressing Start Replay again starts it, emulating the lobby the log was played in.
 G.OVERLAY_MENU = {}

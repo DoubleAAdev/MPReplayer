@@ -1,5 +1,5 @@
-# Balatro Replayer 2.0.5
+# Balatro Replayer 2.1.0
 
-Fix the 2.0.4 stall on the final hand of PvP. Once Multiplayer reports the score and queued hand effects finish, the replay can deliver the opponent result even while Multiplayer remains in HAND_PLAYED. Discard completion protection remains in place.
+The config tab now shows Missing / Extra / Versions counts with previous/next details for each difference. The comparison uses mods loaded in the running game. Start Replay still requires a second press when mods differ. Long diagnostics no longer stretch the menu; full text remains in status.json.
 
-Validation: all five Lua suites, including exhausted-hand PvP, play/discard completion and offline score-report regressions. Full in-game playback remains unverified. Restart Balatro and replay from the beginning.
+Restart Balatro after installing.

@@ -34,6 +34,8 @@ return function(mod, JSON)
     end
     G.FUNCS.brpl_next = function() protect(session.next_run) end
     G.FUNCS.brpl_start = function() protect(session.start) end
+    G.FUNCS.brpl_mod_prev = function() session.mod_page(-1) end
+    G.FUNCS.brpl_mod_next = function() session.mod_page(1) end
     G.FUNCS.brpl_stop = function() protect(session.stop) end
 
     local previous_drop = love.filedropped
@@ -88,6 +90,18 @@ return function(mod, JSON)
                 nodes = {{n = G.UIT.T, config = {text = item[1], scale = 0.28, colour = G.C.WHITE}}}}
         end
         tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = buttons}
+        for _, field in ipairs({'mod_summary', 'mod_detail1', 'mod_detail2', 'mod_detail3'}) do
+            tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.02}, nodes = {
+                {n = G.UIT.T, config = {ref_table = session, ref_value = field, scale = 0.24, colour = G.C.WHITE}}}}
+        end
+        local navigation = {}
+        for _, item in ipairs({{'<', 'brpl_mod_prev'}, {'>', 'brpl_mod_next'}}) do
+            navigation[#navigation + 1] = {n = G.UIT.C, config = {align = 'cm', button = item[2], colour = G.C.BLUE, padding = 0.08, r = 0.1, hover = true},
+                nodes = {{n = G.UIT.T, config = {text = item[1], scale = 0.26, colour = G.C.WHITE}}}}
+        end
+        table.insert(navigation, 2, {n = G.UIT.C, config = {align = 'cm', padding = 0.08}, nodes = {
+            {n = G.UIT.T, config = {ref_table = session, ref_value = 'mod_position', scale = 0.24, colour = G.C.WHITE}}}})
+        tab.nodes[#tab.nodes + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = navigation}
         return tab
     end
     return session

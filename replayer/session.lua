@@ -43,20 +43,21 @@ return function(log, driver, JSON, deps)
         end)
     end
 
-    -- The config tab has room for four lines of about this many characters;
-    -- the last line takes whatever is left.
-    local WIDTH = 60
+    -- Bound every visible line; full diagnostic text remains in status.json.
+    local WIDTH = 52
     local function wrap(text)
         local lines, line = {}, ''
         for word in tostring(text):gmatch('%S+') do
-            if line ~= '' and #line + 1 + #word > WIDTH and #lines < 3 then
-                lines[#lines + 1] = line
-                line = word
-            else
-                line = line == '' and word or (line .. ' ' .. word)
+            if line ~= '' and #line + 1 + #word > WIDTH then
+                lines[#lines + 1], line = line, ''
             end
+            while #word > WIDTH do
+                lines[#lines + 1], word = word:sub(1, WIDTH), word:sub(WIDTH + 1)
+            end
+            line = line == '' and word or (line .. ' ' .. word)
         end
         lines[#lines + 1] = line
+        if #lines > 4 then lines[4] = lines[4]:sub(1, WIDTH - 3) .. '...' end
         S.line1, S.line2, S.line3, S.line4 = lines[1] or '', lines[2] or '', lines[3] or '', lines[4] or ''
     end
     wrap(S.text)
@@ -152,6 +153,8 @@ return function(log, driver, JSON, deps)
     -- layout of their filter script, and names the run in the status.
     local function show_run()
         local run = S.runs[S.index]
+        S.confirmed = nil
+        S.refresh_mods()
         pcall(function()
             love.filesystem.createDirectory(directory)
             love.filesystem.write(directory .. '/actions.txt', log.table(run))
@@ -213,31 +216,59 @@ return function(log, driver, JSON, deps)
     -- left out: they change no card.
     local function mods_of(text)
         local set = {}
-        for item in tostring(text):gmatch('[^;]+') do
-            if not item:find('=', 1, true) and not item:match('^BalatroObserver%-') and not item:match('^BalatroReplayer%-') then
-                set[item] = true
+        for item in text:gmatch('[^;]+') do
+            item = item:match('^%s*(.-)%s*$')
+            local id, version = item:match('^(.-)%-(%d.*)$')
+            id = id or item
+            if not item:find('=', 1, true) and id ~= 'BalatroObserver' and id ~= 'BalatroReplayer' then
+                set[id] = version or ''
             end
         end
         return set
     end
 
-    -- Another mod set deals another game from the same seed: an updated
-    -- Steamodded, for one, rolls a different boss blind. Said before the run
-    -- starts rather than found out at the first thing that differs.
-    local function mod_difference(m)
-        if type(m.mod_hash) ~= 'string' or type(MP.MOD_STRING) ~= 'string' or MP.MOD_STRING == '' then return nil end
-        local logged, installed = mods_of(m.mod_hash), mods_of(MP.MOD_STRING)
-        local missing, extra = {}, {}
-        for item in pairs(logged) do if not installed[item] then missing[#missing + 1] = item end end
-        for item in pairs(installed) do if not logged[item] then extra[#extra + 1] = item end end
-        if #missing == 0 and #extra == 0 then return nil end
-        table.sort(missing)
-        table.sort(extra)
-        local parts = {}
-        if #missing > 0 then parts[#parts + 1] = 'the log had ' .. table.concat(missing, ', ') end
-        if #extra > 0 then parts[#parts + 1] = 'this game has ' .. table.concat(extra, ', ') end
-        return 'Mods differ from the log: ' .. table.concat(parts, '; ')
+    function S.mod_page(delta)
+        local pages = S.mod_pages or {}
+        S.mod_page_index = #pages > 0 and ((S.mod_page_index or 1) - 1 + (delta or 0)) % #pages + 1 or 1
+        local page = pages[S.mod_page_index] or {}
+        S.mod_detail1, S.mod_detail2, S.mod_detail3 = page[1] or '', page[2] or '', page[3] or ''
+        S.mod_position = #pages > 0 and ('Details ' .. S.mod_page_index .. '/' .. #pages) or 'No differences to list'
     end
+
+    -- Compare the manifest with mods loaded by this running game, not files on disk.
+    function S.refresh_mods()
+        local run = S.runs and S.runs[S.index]
+        local recorded = run and run.manifest.mod_hash
+        local current = MP and MP.MOD_STRING
+        S.mod_pages, S.mod_page_index = {}, 1
+        S.mod_summary = not run and 'Mods: load a log to compare' or 'Mods: comparison unavailable'
+        local differences = {}
+        if type(recorded) == 'string' and recorded ~= '' and type(current) == 'string' and current ~= '' then
+            local logged, loaded = mods_of(recorded), mods_of(current)
+            local missing, extra, changed = {}, {}, {}
+            for id, version in pairs(logged) do
+                if loaded[id] == nil then missing[#missing + 1] = id
+                elseif loaded[id] ~= version then changed[#changed + 1] = id end
+            end
+            for id in pairs(loaded) do if logged[id] == nil then extra[#extra + 1] = id end end
+            table.sort(missing); table.sort(extra); table.sort(changed)
+            S.mod_summary = 'Missing: ' .. #missing .. ' | Extra: ' .. #extra .. ' | Versions: ' .. #changed
+            for _, id in ipairs(missing) do differences[#differences + 1] = {'Missing: ' .. id, 'Log: ' .. logged[id], 'Loaded: absent'} end
+            for _, id in ipairs(extra) do differences[#differences + 1] = {'Extra: ' .. id, 'Log: absent', 'Loaded: ' .. loaded[id]} end
+            for _, id in ipairs(changed) do differences[#differences + 1] = {'Version: ' .. id, 'Log: ' .. logged[id], 'Loaded: ' .. loaded[id]} end
+            if #differences == 0 then S.mod_summary = 'Mods match the log' end
+        end
+        for _, entry in ipairs(differences) do
+            local lines = {}
+            for _, line in ipairs(entry) do
+                for start = 1, #line, WIDTH do lines[#lines + 1] = line:sub(start, start + WIDTH - 1) end
+            end
+            for start = 1, #lines, 3 do S.mod_pages[#S.mod_pages + 1] = {lines[start], lines[start + 1], lines[start + 2]} end
+        end
+        S.mod_page()
+        return #differences > 0, tostring(recorded) .. '\n' .. tostring(current)
+    end
+    S.refresh_mods()
 
     function S.start()
         assert(S.runs, 'Load a log first')
@@ -245,10 +276,11 @@ return function(log, driver, JSON, deps)
         local run = S.runs[S.index]
         local m = run.manifest
         local key, deck_name = validate(run)
-        local differs = mod_difference(m)
-        if differs and S.confirmed ~= run then
-            S.confirmed = run
-            error(differs .. '. The replay may stop early. Press Start Replay again to replay anyway', 0)
+        local differs, signature = S.refresh_mods()
+        if differs and (S.confirmed ~= run or S.confirmed_mods ~= signature) then
+            S.confirmed, S.confirmed_mods = run, signature
+            S.status('Mods differ; see the details below. Replay may stop early. Press Start Replay again to continue.')
+            return
         end
         S.confirmed = nil
         classify(run.entries)

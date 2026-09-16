@@ -24,7 +24,7 @@ assert(BalatroReplayer == session and session.phase == 'idle')
 
 -- The mod's config tab: four status lines and four buttons.
 local tab = mod.config_tab()
-assert(tab.n == G.UIT.ROOT and #tab.nodes == 5)
+assert(tab.n == G.UIT.ROOT and #tab.nodes == 10)
 for i, line in ipairs({'line1', 'line2', 'line3', 'line4'}) do
     assert(tab.nodes[i].nodes[1].config.ref_table == session and tab.nodes[i].nodes[1].config.ref_value == line)
 end
@@ -33,6 +33,12 @@ local buttons = {}
 for _, node in ipairs(tab.nodes[5].nodes) do buttons[#buttons + 1] = node.config.button end
 assert(table.concat(buttons, ',') == 'brpl_load,brpl_next,brpl_start,brpl_stop')
 for _, name in ipairs(buttons) do assert(type(G.FUNCS[name]) == 'function') end
+
+assert(tab.nodes[6].nodes[1].config.ref_value == 'mod_summary')
+assert(tab.nodes[10].nodes[1].config.button == 'brpl_mod_prev')
+assert(tab.nodes[10].nodes[3].config.button == 'brpl_mod_next')
+G.FUNCS.brpl_mod_prev(); G.FUNCS.brpl_mod_next()
+assert(session.mod_summary == 'Mods: load a log to compare')
 
 -- Loading through the picker, cancelling, and dropping a file.
 G.FUNCS.brpl_load()
