@@ -679,6 +679,15 @@ return function(log, driver, JSON, deps)
             local resolving = (state == 'HAND_PLAYED' and not waiting_for_opponent) or state == 'DRAW_TO_HAND' or state == 'DISCARD'
                 or state == 'NEW_ROUND' or (G.play and G.play.cards and #G.play.cards > 0)
             if resolving or busy() or now - (session.consumed or 0) < SETTLE then
+                -- A drag logged while the hand scores must happen while it scores:
+                -- after the last PvP hand the leftover cards are gone by the time
+                -- scoring settles, and endPvP waits behind the reorder.
+                local next_entry = session.entries[session.cursor]
+                if next_entry and next_entry.op == 'reorder' and not session.issued then
+                    local cursor = session.cursor
+                    local ok, result = pcall(driver.perform, next_entry, session.entries)
+                    if ok and result == 'done' and session.cursor == cursor and not session.failure then session.issued = now end
+                end
                 if now - session.hand_pending.began > STALL then
                     return fail(session.hand_pending.op .. ' at log line ' .. tostring(session.hand_pending.line)
                         .. ' did not finish resolving; no following input was issued')

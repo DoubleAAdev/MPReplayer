@@ -526,6 +526,39 @@ assert(session.phase=='finished',session.text)
 session.on_main_menu()
 print('PASS: exhausted PvP hand releases opponent result after scoring and effects without resending input or network traffic')
 
+-- A hand drag logged while the last PvP hand scored is performed during
+-- scoring, before the leftover cards leave and endPvP is waited on.
+local reorder_calls=0
+session.runs[1].entries={
+ {kind='action',op='play',args={'2.3.5.6.7'},text='play 2.3.5.6.7',seq=147,line=3055},
+ {kind='action',op='reorder',args={'6','3.1.2.4.5'},text='reorder 6 3.1.2.4.5',seq=148,line=3057},
+ {kind='message',action='endPvP',fields={action='endPvP',lost=true},line=3063},
+}
+session.runs[1].actions=2
+driver.perform=function(entry)
+ if entry.op=='play' then
+  MP.RLOG.record('play',{{2,3,5,6,7}})
+  G.GAME.current_round={hands_left=0}
+  G.hand={cards={1,2,3,4,5}};G.play={cards={1}}
+  G.E_MANAGER.queues.base={{blocking=true,complete=false}}
+ else
+  assert(#G.hand.cards==5,'the reorder must happen before the hand empties')
+  reorder_calls=reorder_calls+1
+  MP.RLOG.record('reorder',{6,{3,1,2,4,5}})
+ end
+ return 'done'
+end
+begin()
+for i=1,3 do now=now+1;session.update(.1) end
+assert(reorder_calls==1 and #channel.items==0,session.text)
+G.hand={cards={}};G.play={cards={}};G.E_MANAGER.queues.base={}
+Client.send({action='playHand',score='28187',handsLeft=0})
+for i=1,3 do now=now+1;session.update(.1) end
+assert(#channel.items>=1 and sent_last().action=='endPvP',session.text)
+assert(reorder_calls==1)
+session.on_main_menu()
+print('PASS: a hand reorder logged during last-hand scoring does not deadlock endPvP')
+
 -- Native end-screen creation can happen before the next replay update.
 assert(session.active_run() == nil)
 begin()
