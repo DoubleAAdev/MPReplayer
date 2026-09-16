@@ -1,3 +1,10 @@
+# MP Replayer 2.9.4
+
+- Remove every status-text row beneath the replay list, including cancellation, progress and error messages.
+- Keep diagnostics in status.json and retain replay-start confirmation dialogs.
+
+Validation: nine Lua suites passed. Restart Balatro to load the update.
+
 # MP Replayer 2.9.3
 
 - Fix access to mod configuration gears and nested settings in Steamodded's scrollable menus while a replay is running, failed or finished.

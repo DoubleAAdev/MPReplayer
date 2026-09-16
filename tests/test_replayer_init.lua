@@ -227,14 +227,14 @@ assert(session.runs[session.index] == session.log_runs[#session.log_runs])
 assert(session.log_runs[#session.log_runs].source_name == 'second.log')
 assert(not pcall(session.load, 'invalid log'))
 assert(#session.log_runs == 1, 'invalid imports preserve existing games')
-session.status('Ready.')
+session.status('Replay cancelled.')
 local compact = mod.extra_tabs()[1].tab_definition_function()
 local status_rows = 0
 for _, node in ipairs(compact.nodes) do
     local config = node.nodes and node.nodes[1] and node.nodes[1].config or {}
     if config.ref_value and config.ref_value:match('^line%d$') then status_rows = status_rows + 1 end
 end
-assert(status_rows == 1, 'unused status lines must not consume vertical space')
+assert(status_rows == 0, 'the Replays page must never render status footer text')
 
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end

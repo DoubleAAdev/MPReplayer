@@ -87,3 +87,6 @@ __pycache__/
 
 # Local nested-menu and Cocktail UI checks
 /cocktail-menu-qa/
+
+# Local replay-footer UI captures
+/footer-qa/

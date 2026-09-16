@@ -23,7 +23,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts
 **Replays** is the replay-management tab. It shows the source filename and all playable games in that log, with players, deck, and stake. Previous/Next pages cover longer logs; removing a replay list entry does not change this source inventory.
 
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\mp_replayer\actions.txt`, one row per action — exactly what the replay will execute.
-3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the Replays tab or `%APPDATA%\Balatro\mp_replayer\status.json`.
+3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Read replay diagnostics in `%APPDATA%\Balatro\mp_replayer\status.json`.
 4. When the status says the replay is complete, choose **End Replay** from the pause menu. If Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
 5. Ending the replay returns to the main menu, dismantles the lobby copy, restores player controls, and leaves Multiplayer as it was.
 
