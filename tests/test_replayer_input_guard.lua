@@ -123,6 +123,26 @@ G.OVERLAY_MENU = nil
 UIElement.click(setting); assert(count('mod_setting_toggle') == 1, 'closed menus cannot grant access')
 controller:key_press_update('r'); assert(count('key_r') == 0)
 
+-- View Deck is a clickable card pile, not a UIElement button.
+G.deck = card_area()
+local deck_top = G.deck.cards[1]
+local deck_views = count('deck_info')
+controller.hovering.target, controller.cursor_hover.target, controller.focused.target = deck_top, deck_top, deck_top
+for _, touch in ipairs({false, true}) do
+    local before = count('press')
+    controller.HID.touch = touch
+    controller:L_cursor_press(); assert(count('press') == before + 1)
+    deck_top:click()
+end
+assert(count('deck_info') == deck_views + 2 and not deck_top.selected)
+deck_top:drag(); deck_top:stop_drag(); deck_top:release()
+assert(G.deck.cards[1] == deck_top and count('drag') == 0)
+assert(controller:capture_focused_input('dpright', 'press', 0.1) == false)
+G.deck.cards[2]:click(); assert(count('deck_info') == deck_views + 2)
+deck_top.under_overlay = true; deck_top:click()
+assert(count('deck_info') == deck_views + 2, 'background deck cannot open through an overlay')
+deck_top.under_overlay = nil
+
 -- The same callbacks issued by the driver, and deferred effects, remain usable.
 for _, name in ipairs(gameplay) do assert(G.FUNCS[name]({config = {}}) == name) end
 local function button(name)

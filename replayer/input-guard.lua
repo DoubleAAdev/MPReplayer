@@ -15,6 +15,10 @@ return function(session)
     local function is_card(node)
         return node and Card and (getmetatable(node) == Card or (node.is and node:is(Card)))
     end
+    local function deck_view_target(node)
+        return is_card(node) and G.deck and node.area == G.deck
+            and G.deck.cards and G.deck.cards[1] == node and not node.under_overlay
+    end
     local gameplay_buttons = {
         play_cards_from_highlighted = true, discard_cards_from_highlighted = true,
         use_card = true, sell_card = true, buy_from_shop = true, buy_and_use = true,
@@ -32,7 +36,8 @@ return function(session)
         return controller and in_overlay(controller.text_input_hook)
     end
     local function safe_node(node)
-        if not node or is_card(node) then return false end
+        if not node then return false end
+        if is_card(node) then return deck_view_target(node) end
         local config = node.config or {}
         if gameplay_buttons[config.button] then return false end
         -- Overlay ownership admits settings, mod pages, tabs, toggles, sliders,
@@ -72,7 +77,16 @@ return function(session)
         was_active = now_active
     end
 
-    for _, name in ipairs({'click', 'drag', 'stop_drag', 'release'}) do
+    hook(Card, 'click', function(original, self, ...)
+        if active() then
+            -- The deck pile is the game's View Deck control. Open its read-only
+            -- view directly without invoking card-selection or mod click hooks.
+            if deck_view_target(self) then return G.FUNCS.deck_info() end
+            return
+        end
+        return original(self, ...)
+    end)
+    for _, name in ipairs({'drag', 'stop_drag', 'release'}) do
         hook(Card, name, function(original, self, ...)
             if active() then return end
             return original(self, ...)
@@ -92,7 +106,7 @@ return function(session)
         return original(self, ...)
     end)
     hook(Controller, 'capture_focused_input', function(original, self, ...)
-        if active() and not safe_node(self.focused.target) then return false end
+        if active() and (is_card(self.focused.target) or not safe_node(self.focused.target)) then return false end
         return original(self, ...)
     end)
     hook(Controller, 'key_press_update', function(original, self, key, ...)
