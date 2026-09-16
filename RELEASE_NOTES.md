@@ -1,6 +1,6 @@
-# MP Replayer 2.9.17
+# MP Replayer 2.9.18
 
-- Fix replays stopping when the player reordered their consumables: Multiplayer does not log drags in the consumable rack, so a used or sold consumable found in another slot is moved to the logged slot first, as the player's drag did.
+- Fix consumables bought and used at once (such as Asteroid) being kept when the purchase moved no other money: a kept card keeps its duplicates out of shops and packs, so the same card offered again later (without Showman) now means it was used on purchase. A kept Asteroid had turned a later shop reroll into Mars.
 
 Validation: ten Lua suites. Restart Balatro to load the update.
 

@@ -156,6 +156,8 @@ local kept = stream(entry('use', {'1'}, 'usedCard,card:Arcana Pack'), entry('sel
 assert(driver.perform(kept[1], kept) == 'done' and select(2, last()).config.id == 'buy' and driver.note:find('its slot is used at action'), driver.note)
 local fired = stream(entry('reroll', {}, 'rerollShop,cost:5'), entry('use', {'1'}, 'usedCard,card:Mars'), entry('use', {'2'}, 'usedCard,card:Temperance'))
 assert(driver.perform(fired[1], fired) == 'done' and select(2, last()).config.id == 'buy_and_use' and driver.note:find('another card is in its slot'), driver.note)
+local offered = stream(entry('reroll', {}, 'rerollShop,cost:5'), entry('buy', {'1', '2'}, 'boughtCardFromShop,card:c_mp_asteroid,cost:3', {'-3'}))
+assert(driver.perform(offered[1], offered) == 'done' and select(2, last()).config.id == 'buy_and_use' and driver.note:find('offered again at action'), driver.note)
 local silent = stream(entry('use', {'1'}, 'usedCard,card:Overstock'), entry('sell', {'4', '3'}, 'soldCard,card:Misprint'))
 assert(driver.perform(silent[1], silent) == 'done' and select(2, last()).config.id == 'buy' and driver.note:find('no later use'), driver.note)
 assert(driver.perform(entry('buy', {'1', '1'}, 'boughtCardFromShop,card:c_mp_asteroid,cost:3', {'-3'})) == 'done' and select(2, last()).config.id == 'buy')

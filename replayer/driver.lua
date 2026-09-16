@@ -138,15 +138,19 @@ return function(log)
     -- Multiplayer logs "Buy" and "Buy & Use" with the same line. A card
     -- bought and kept sits in the rack at a known slot from then on: every
     -- card the game adds later lands behind it, and every removal in front
-    -- of it is logged. The first later use or sale of that slot tells.
-    local function slot_rule(entries, position, name)
+    -- of it is logged. The first later use or sale of that slot tells. A kept
+    -- card also keeps its duplicates out of shops and packs (Showman aside),
+    -- so the same card offered again before that means it was used at once.
+    local function slot_rule(entries, position, name, duplicates)
         if not entries or not position then return nil end
         local slot = #(cards_of(G.consumeables) or {}) + 1
         for i = position + 1, #entries do
             local e = entries[i]
             if e.kind == 'action' then
                 local referenced, used
-                if e.op == 'use' then
+                if (e.op == 'buy' or e.op == 'pack_pick') and not duplicates and log.expectation(e).name == name then
+                    return 'buy_and_use', 'the same card is offered again at action ' .. tostring(e.seq or e.text)
+                elseif e.op == 'use' then
                     used = log.expectation(e).name
                     if used and is_consumable(used) then referenced = tonumber(e.args[1]) end
                 elseif e.op == 'sell' and e.args[1] == '5' then
@@ -154,7 +158,10 @@ return function(log)
                     referenced = tonumber(e.args[2])
                 end
                 if referenced then
-                    if referenced == slot then return (used == name) and 'buy' or 'buy_and_use', tostring(e.seq or e.text) end
+                    if referenced == slot then
+                        return (used == name) and 'buy' or 'buy_and_use', ((used == name) and 'its slot is used at action '
+                            or 'another card is in its slot at action ') .. tostring(e.seq or e.text)
+                    end
                     if referenced < slot then slot = slot - 1 end
                 end
             end
@@ -174,8 +181,10 @@ return function(log)
         if #money > (cost > 0 and 1 or 0) then return 'buy_and_use', 'money moved right after the purchase' end
         if card.can_use_consumeable and not card:can_use_consumeable() then return 'buy', 'it cannot be used from the shop' end
         if not has_buy_space(card) then return 'buy_and_use', 'no free consumable slot' end
-        local mode, seq = slot_rule(entries, entry.position, card_name(card))
-        if mode then return mode, (mode == 'buy' and 'its slot is used at action ' or 'another card is in its slot at action ') .. seq end
+        local key = ((card.config or {}).center or {}).key
+        local duplicates = SMODS and SMODS.showman and key and SMODS.showman(key)
+        local mode, evidence = slot_rule(entries, entry.position, card_name(card), duplicates)
+        if mode then return mode, evidence end
         return 'buy', 'no later use of its slot in the log'
     end
 
