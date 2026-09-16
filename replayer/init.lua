@@ -53,7 +53,7 @@ return function(mod, JSON)
         return input_guard
     end
     local pick_file = load('file-picker.lua')
-    BalatroReplayer = session
+    MPReplayer = session
     local limit = 16 * 1024 * 1024
 
     local function protect(fn, fatal)
@@ -68,7 +68,7 @@ return function(mod, JSON)
         local open = G.FUNCS['openModUI_' .. mod.id]
         if open then open() end
     end
-    G.FUNCS.brpl_load = function()
+    G.FUNCS.mprpl_load = function()
         protect(function()
             assert(session.phase == 'idle', 'Finish the current replay before loading another log')
             local path = pick_file()
@@ -92,19 +92,19 @@ return function(mod, JSON)
             show_replays()
         end
     end
-    G.FUNCS.brpl_start_listed = function(e)
+    G.FUNCS.mprpl_start_listed = function(e)
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
         protect(function() session.start_listed(e.config.ref_table) end)
         after_start()
     end
-    G.FUNCS.brpl_cancel_replay = function()
+    G.FUNCS.mprpl_cancel_replay = function()
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
         session.status('Replay cancelled.')
         show_replays()
     end
-    G.FUNCS.brpl_continue_replay = function()
+    G.FUNCS.mprpl_continue_replay = function()
         local pending = pending_confirmation
         pending_confirmation = nil
         if not pending or session.phase ~= 'idle' then return end
@@ -117,12 +117,12 @@ return function(mod, JSON)
         protect(session.start)
         after_start()
     end
-    G.FUNCS.brpl_remove = function()
+    G.FUNCS.mprpl_remove = function()
         protect(session.remove_run)
         guard().update()
     end
-    G.FUNCS.brpl_next = function() protect(session.next_run) end
-    G.FUNCS.brpl_start = function()
+    G.FUNCS.mprpl_next = function() protect(session.next_run) end
+    G.FUNCS.mprpl_start = function()
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
         protect(session.start)
@@ -135,11 +135,11 @@ return function(mod, JSON)
             G.FUNCS['openModUI_' .. mod.id]()
         end
     end
-    G.FUNCS.brpl_log_prev = function() change_log_page(-1) end
-    G.FUNCS.brpl_log_next = function() change_log_page(1) end
-    G.FUNCS.brpl_mod_prev = function() session.mod_page(-1) end
-    G.FUNCS.brpl_mod_next = function() session.mod_page(1) end
-    G.FUNCS.brpl_end = function()
+    G.FUNCS.mprpl_log_prev = function() change_log_page(-1) end
+    G.FUNCS.mprpl_log_next = function() change_log_page(1) end
+    G.FUNCS.mprpl_mod_prev = function() session.mod_page(-1) end
+    G.FUNCS.mprpl_mod_next = function() session.mod_page(1) end
+    G.FUNCS.mprpl_end = function()
         if session.phase == 'idle' then return end
         protect(function()
             if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
@@ -147,7 +147,7 @@ return function(mod, JSON)
         end)
         guard().update()
     end
-    G.FUNCS.brpl_stop = G.FUNCS.brpl_end
+    G.FUNCS.mprpl_stop = G.FUNCS.mprpl_end
 
     local previous_drop = love.filedropped
     love.filedropped = function(file)
@@ -213,12 +213,12 @@ return function(mod, JSON)
             message('Mods differ', 0.55),
             message('Some mods may affect this replay.'),
             message('It may play differently or stop early.'),
-            buttons(button('Cancel', 'brpl_cancel_replay', nil, G.C.RED), button('Continue', 'brpl_continue_replay', nil, G.C.GREEN)),
+            buttons(button('Cancel', 'mprpl_cancel_replay', nil, G.C.RED), button('Continue', 'mprpl_continue_replay', nil, G.C.GREEN)),
         }}}
         -- Escape closes the popup without starting; a fresh Start always asks again.
     end
-    G.FUNCS.brpl_details_back = show_replays
-    G.FUNCS.brpl_details = function()
+    G.FUNCS.mprpl_details_back = show_replays
+    G.FUNCS.mprpl_details = function()
         session.refresh_mods()
         local rows = {
             {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
@@ -233,10 +233,10 @@ return function(mod, JSON)
                     row('mod_detail1', 0.4), row('mod_detail2', 0.38), row('mod_detail3', 0.38)}}}}
             if #session.mod_pages > 1 then
                 rows[#rows + 1] = row('mod_position', 0.3)
-                rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
+                rows[#rows + 1] = buttons(button('Previous', 'mprpl_mod_prev'), button('Next', 'mprpl_mod_next'))
             end
         end
-        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'brpl_details_back', contents = rows}}
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'mprpl_details_back', contents = rows}}
     end
     mod.config_tab = function() return mod.extra_tabs()[1].tab_definition_function() end
     if SMODS.LAST_SELECTED_MOD_TAB == 'config' then SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1' end
@@ -254,7 +254,7 @@ return function(mod, JSON)
     mod.extra_tabs = function()
         return {{label = 'Replays', tab_definition_function = function()
             session.log_page()
-            local rows = {buttons(button('Load Log', 'brpl_load', 4.0), button('Compare Mods', 'brpl_details', 4.0)),
+            local rows = {buttons(button('Load Log', 'mprpl_load', 4.0), button('Compare Mods', 'mprpl_details', 4.0)),
                 row('log_filename', 0.38), row('log_count', 0.3)}
             local runs = session.log_runs or {}
             for slot = 1, 3 do
@@ -277,7 +277,7 @@ return function(mod, JSON)
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
                                 text(session.stake_name(m.stake), 0.3)}}}},
-                        UIBox_button{label = {'Start Replay'}, button = 'brpl_start_listed', ref_table = run,
+                        UIBox_button{label = {'Start Replay'}, button = 'mprpl_start_listed', ref_table = run,
                             minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = G.C.GREEN or G.C.BLUE}
 
                     }}
@@ -286,7 +286,7 @@ return function(mod, JSON)
             if #runs == 0 then rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {text('Load a log to see its games.')}} end
             if #runs > 3 then
                 rows[#rows + 1] = row('log_position', 0.3)
-                rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
+                rows[#rows + 1] = buttons(button('Previous', 'mprpl_log_prev'), button('Next', 'mprpl_log_next'))
             end
             for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do
                 if not session.text:match('^Ready to replay') and session[field] ~= '' then

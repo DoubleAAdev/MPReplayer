@@ -11,7 +11,7 @@ It was part of Balatro Observer until version 1.10.0 and moved here unchanged.
 
 ## Install
 
-Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./scripts/install.ps1`, which copies the mod files there and verifies each one. Restart Balatro.
+Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts/install.ps1`, which copies the mod files there and verifies each one. Restart Balatro.
 
 ## Tests
 
@@ -22,8 +22,8 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 1. Open **Mods > MP Replayer > Replays**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before MP Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
 **Replays** is the replay-management tab. It shows the source filename and all playable games in that log, with players, deck, and stake. Previous/Next pages cover longer logs; removing a replay list entry does not change this source inventory.
 
-2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
-3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the Replays tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
+2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\mp_replayer\actions.txt`, one row per action — exactly what the replay will execute.
+3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the Replays tab or `%APPDATA%\Balatro\mp_replayer\status.json`.
 4. When the status says the replay is complete, choose **End Replay** from the pause menu. If Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
 5. Ending the replay returns to the main menu, dismantles the lobby copy, restores player controls, and leaves Multiplayer as it was.
 
@@ -79,3 +79,5 @@ Only potentially critical mismatches require two presses. Handy and JokerDisplay
 Load Log replaces the current list with games from the selected log. Only one log is active at a time. Invalid logs and cancelled selections keep the existing list, and source files are never deleted.
 
 Critical or unknown mod differences now open a Cancel / Continue popup instead of requiring a second press. Cancel leaves the replay stopped; Continue rechecks compatibility before starting.
+
+The installer preserves earlier installations outside the Mods folder and migrates replay diagnostics to `mp_replayer`. Older recorded mod IDs remain supported.

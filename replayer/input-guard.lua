@@ -5,11 +5,11 @@ return function(session)
     local function active() return session.phase ~= 'idle' end
     M.active = active
     local safe_buttons = {
-        options = true, exit_overlay_menu = true, brpl_end = true,
+        options = true, exit_overlay_menu = true, mprpl_end = true,
         run_info = true, deck_info = true, change_tab = true, lobby_info = true,
         saturn_config = true, settings = true, mods_button = true,
         high_scores = true, your_collection = true, customize_deck = true,
-        brpl_mod_prev = true, brpl_mod_next = true,
+        mprpl_mod_prev = true, mprpl_mod_next = true,
     }
     local exits = {mp_return_to_lobby = true, lobby_leave = true}
     local function is_card(node)
@@ -27,7 +27,7 @@ return function(session)
         cash_out = true, toggle_shop = true, start_setup_run = true, setup_run = true,
         start_run = true, go_to_menu = true, mp_unstuck = true, mp_unstuck_blind = true,
         mp_unstuck_arcana = true, lobby_leave = true, mp_return_to_lobby = true,
-        lobby_choose_deck = true, brpl_start_listed = true, brpl_start = true, brpl_load = true, brpl_next = true,
+        lobby_choose_deck = true, mprpl_start_listed = true, mprpl_start = true, mprpl_load = true, mprpl_next = true,
     }
     local function in_overlay(node)
         return G.OVERLAY_MENU ~= nil and node and node.UIBox == G.OVERLAY_MENU and not node.under_overlay
@@ -166,7 +166,7 @@ return function(session)
             if exits[config.button] then
                 if end_added then return nil end
                 end_added = true
-                config.button, config.func, config.id = 'brpl_end', nil, 'brpl_end'
+                config.button, config.func, config.id = 'mprpl_end', nil, 'mprpl_end'
                 -- Keep the native button's label tree, font, shadow and dimensions.
                 local replaced = false
                 local function relabel(child)

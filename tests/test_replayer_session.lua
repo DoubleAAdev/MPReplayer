@@ -78,7 +78,7 @@ local session = dofile('replayer/session.lua')(log, driver, JSON,
 -- Loading filters the log to its actions and lists them for the player.
 session.load(text)
 assert(session.runs and session.runs[1].actions == 6 and session.text:find('6 actions') and session.replay_seed == 'Seed: TESTSEED', session.text)
-local listed = writes['balatro_replayer/actions.txt']
+local listed = writes['mp_replayer/actions.txt']
 assert(listed:find('^MANIFEST {}\n') and listed:find('OP_NUM: 3 || OP: play') and not listed:find('set_ante_key'), listed)
 
 -- Starting is refused outside the main menu or inside a lobby.
@@ -109,7 +109,7 @@ manifest.mod_hash, MP.MOD_STRING = saved_hash, saved_mods
 
 -- A log played with other mods is named before anything starts.
 manifest.mod_hash = 'preview=false;unlocked=true;encryptID=1;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
-MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'
+MP.MOD_STRING = 'preview=false;unlocked=true;encryptID=2;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;MPReplayer-2.9.0;Handy-2.0.6;Multiplayer-0.5.5;Steamodded-26.829.0;takanatro-1.0.0'
 ok, err = pcall(session.start)
 assert(ok, err)
 assert(session.text:find('Critical or unknown mods differ'), session.text)
@@ -189,7 +189,7 @@ MP.STATS.record_match(true)
 assert(matches == 0, 'a replayed win is not a recorded match')
 -- The same mods pass on the first press, whatever Multiplayer's flags and
 -- the replay's own mods say; every later start below relies on it.
-MP.MOD_STRING = 'preview=true;unlocked=false;encryptID=9;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
+MP.MOD_STRING = 'preview=true;unlocked=false;encryptID=9;BalatroObserver-1.11.0;BalatroReplayer-1.0.0;MPReplayer-2.9.0;Handy-2.0.5;Multiplayer-0.5.5;Steamodded-1.0.0~BETA-1620a'
 assert(#channel.items == 0, 'the run does not start before Multiplayer has entered the lobby')
 
 -- Multiplayer re-enters the menu on joining; the run starts once it settles.
@@ -294,7 +294,7 @@ assert(performed[4] == 'buy 1 1')
 MP.RLOG.record('buy', {1, 2}, 'action:boughtCardFromShop,card:Square Joker,cost:4')
 assert(session.phase == 'failed', session.text)
 assert(session.text:find('at action 7 %(buy 1 1%)') and session.text:find('the game did "buy 1 2", which is not the log\'s next action "buy 1 1"'), session.text)
-assert(writes['balatro_replayer/status.json']:find('"phase":"failed"'))
+assert(writes['mp_replayer/status.json']:find('"phase":"failed"'))
 -- Once stopped, the player's own moves are logged as usual.
 MP.RLOG.record('reroll', nil, 'action:rerollShop,cost:5')
 assert(#records == 1 and session.progress() == '4/6', 'after a failure records pass through untouched')

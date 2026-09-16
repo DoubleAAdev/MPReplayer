@@ -33,7 +33,7 @@ local gameplay = {'play_cards_from_highlighted', 'discard_cards_from_highlighted
     'buy_from_shop', 'reroll_shop', 'skip_booster', 'select_blind', 'skip_blind', 'mp_toggle_ready',
     'sort_hand_value', 'sort_hand_suit', 'cash_out', 'toggle_shop', 'start_setup_run', 'mp_unstuck'}
 for _, name in ipairs(gameplay) do G.FUNCS[name] = function() return hit(name) end end
-for _, name in ipairs({'options', 'exit_overlay_menu', 'brpl_end', 'run_info', 'deck_info', 'change_tab'}) do
+for _, name in ipairs({'options', 'exit_overlay_menu', 'mprpl_end', 'run_info', 'deck_info', 'change_tab'}) do
     G.FUNCS[name] = function() return hit(name) end
 end
 love = {}
@@ -86,7 +86,7 @@ love.keypressed('escape'); assert(controller.pressed_keys.escape)
 controller:key_press_update('escape'); assert(count('key_escape') == 1)
 love.gamepadpressed({}, 'start'); love.gamepadreleased({}, 'start')
 assert(count('pad_press_start') == 1 and count('pad_release_start') == 1)
-for _, name in ipairs({'options', 'exit_overlay_menu', 'brpl_end', 'run_info', 'deck_info', 'change_tab'}) do
+for _, name in ipairs({'options', 'exit_overlay_menu', 'mprpl_end', 'run_info', 'deck_info', 'change_tab'}) do
     assert(UIElement.click({config = {button = name}}) == name)
 end
 -- Every requested menu entry and Lobby Info works outside an overlay too.
@@ -164,11 +164,11 @@ local function buttons(node, result)
 end
 local box = {}
 assert(UIBox.init(box, {definition = menu()}) == 'box')
-assert(table.concat(buttons(box.definition), ',') == 'options,brpl_end')
+assert(table.concat(buttons(box.definition), ',') == 'options,mprpl_end')
 local end_node = box.definition.nodes[1].nodes[2].nodes[1]
 assert(end_node.nodes[1].config.text == 'End Replay' and end_node.config.func == nil)
 -- A screen containing only Leave Lobby still gets its exit.
-assert(table.concat(buttons(guard.rewrite(button('lobby_leave'))), ',') == 'brpl_end')
+assert(table.concat(buttons(guard.rewrite(button('lobby_leave'))), ',') == 'mprpl_end')
 -- Normal games get their exact controls back, with no stale held input.
 session.phase = 'idle'; guard.update()
 assert(next(controller.pressed_keys) == nil)

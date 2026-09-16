@@ -128,7 +128,7 @@ return function(decode)
     function M.parse(text)
         assert(type(text) == 'string' and #text <= 16 * 1024 * 1024, 'Log exceeds 16 MB')
         local runs, run, lobby, pending, paying, number = {}, nil, nil, nil, nil, 0
-        -- Replays before Balatro Replayer wrote their own run into the Lovely
+        -- Replays before MP Replayer wrote their own run into the Lovely
         -- log, so those logs hold games nobody played. Their status lines say
         -- which: "Replay starting run <seed>" just before the manifest, and
         -- "Replay running" after it.

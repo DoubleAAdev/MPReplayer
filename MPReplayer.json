@@ -1,13 +1,13 @@
 {
-  "id": "BalatroReplayer",
+  "id": "MPReplayer",
   "name": "MP Replayer",
   "author": [
     "DoubleAAdev"
   ],
   "description": "Replay a Multiplayer game from its Lovely log, action by action.",
-  "prefix": "brpl",
+  "prefix": "mprpl",
   "main_file": "main.lua",
-  "version": "2.8.4",
+  "version": "2.9.0",
   "dependencies": [
     "Steamodded (>=1.0.0~BETA)"
   ]

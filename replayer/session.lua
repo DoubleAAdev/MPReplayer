@@ -17,10 +17,10 @@
 -- game is back at the main menu, every line Multiplayer would log is dropped
 -- as well - the run's manifest, its actions, the money, the messages handed
 -- back to it - so a replay never leaves behind a log that reads like another
--- game. Progress is shown in the config tab and balatro_replayer/status.json.
+-- game. Progress is shown in the config tab and mp_replayer/status.json.
 return function(log, driver, JSON, deps)
     local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1}
-    local directory = 'balatro_replayer'
+    local directory = 'mp_replayer'
     local clock = deps.clock
     local session, saved
     -- Actions the game writes by itself when a delivered message arrives.
@@ -339,7 +339,7 @@ return function(log, driver, JSON, deps)
             item = item:match('^%s*(.-)%s*$')
             local id, version = item:match('^(.-)%-(%d.*)$')
             id = id or item
-            if not item:find('=', 1, true) and id ~= 'BalatroObserver' and id ~= 'BalatroReplayer' then
+            if not item:find('=', 1, true) and id ~= 'BalatroObserver' and id ~= 'MPReplayer' and id ~= 'BalatroReplayer' then
                 set[id] = version or ''
             end
         end

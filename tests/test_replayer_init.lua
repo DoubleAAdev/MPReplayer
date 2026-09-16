@@ -12,7 +12,7 @@ local manifest = {seed = 'TEST', deck = 'b_red', ruleset = 'r', gamemode = 'g', 
 package.loaded.json = {decode = function() return manifest end, encode = function() return '{}' end}
 local chosen = 'picked.log'
 SMODS = {load_file = function(path, id)
-    assert(id == 'BalatroReplayer')
+    assert(id == 'MPReplayer')
     if path == 'replayer/file-picker.lua' then return function() return function() return chosen end end end
     return loadfile(path)
 end}
@@ -24,9 +24,9 @@ function UIBox_button(args)
 end
 function create_UIBox_generic_options(args) return args end
 G.FUNCS.overlay_menu = function(args) G.OVERLAY_MENU = args.definition end
-local mod = {id = 'BalatroReplayer'}
+local mod = {id = 'MPReplayer'}
 local session = dofile('replayer/init.lua')(mod, JSON)
-assert(BalatroReplayer == session and session.phase == 'idle')
+assert(MPReplayer == session and session.phase == 'idle')
 
 -- One Replays tab replaces Config, with the two primary controls above the list.
 assert(type(mod.config_tab) == 'function', 'native mod-list gear requires a config callback')
@@ -35,7 +35,7 @@ function create_UIBox_mods()
     menu_calls = menu_calls + 1
     if G.ACTIVE_MOD_UI == mod then
         assert(mod.config_tab == nil, 'the actual menu must not contain Config')
-        assert(SMODS.LAST_SELECTED_MOD_TAB == 'BalatroReplayer_1')
+        assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
     end
     return 'native_menu'
 end
@@ -55,47 +55,47 @@ G.ACTIVE_MOD_UI = nil
 assert(menu_calls == 2)
 local tab = mod.extra_tabs()[1].tab_definition_function()
 assert(mod.extra_tabs()[1].label == 'Replays')
-assert(tab.nodes[1].nodes[1].config.button == 'brpl_load')
-assert(tab.nodes[1].nodes[3].config.button == 'brpl_details')
+assert(tab.nodes[1].nodes[1].config.button == 'mprpl_load')
+assert(tab.nodes[1].nodes[3].config.button == 'mprpl_details')
 assert(tab.nodes[1].nodes[3].nodes[1].config.text == 'Compare Mods')
 assert(tab.nodes[1].nodes[1].config.minw == tab.nodes[1].nodes[3].config.minw)
 local opened = 0
-G.FUNCS.openModUI_BalatroReplayer = function()
+G.FUNCS.openModUI_MPReplayer = function()
     opened = opened + 1
-    assert(SMODS.LAST_SELECTED_MOD_TAB == 'BalatroReplayer_1')
+    assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
     G.OVERLAY_MENU = mod.extra_tabs()[1].tab_definition_function()
 end
-G.FUNCS.brpl_details()
-assert(G.OVERLAY_MENU.back_func == 'brpl_details_back')
+G.FUNCS.mprpl_details()
+assert(G.OVERLAY_MENU.back_func == 'mprpl_details_back')
 assert(#G.OVERLAY_MENU.contents == 2, 'no-data comparison should only show title and a short message')
 assert(G.OVERLAY_MENU.contents[2].nodes[1].config.ref_value == 'mod_overview')
-G.FUNCS.brpl_details_back()
+G.FUNCS.mprpl_details_back()
 assert(opened == 1)
 G.OVERLAY_MENU = nil
 
 -- Loading through the picker, cancelling, and dropping a file.
-G.FUNCS.brpl_load()
+G.FUNCS.mprpl_load()
 assert(opened == 2, 'loading a log rebuilds the Replays list immediately')
 assert(session.runs and #session.runs == 1 and session.runs[1].actions == 1, session.text)
 chosen = nil
 local loaded = session.runs
-G.FUNCS.brpl_load()
+G.FUNCS.mprpl_load()
 assert(session.runs == loaded)
 local dropped = {getFilename = function() return 'C:/x/lovely-2.LOG' end, getSize = function() return #text end,
     open = function() end, read = function() return text .. ':: MULTIPLAYER :: MP_RLOG: 2 reroll\n' end, close = function() end}
 love.filedropped(dropped)
 assert(session.runs ~= loaded and #session.runs == 1 and session.runs[1].actions == 2, session.text)
 -- The filtered actions are written out for the player to read.
-assert(writes['balatro_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['balatro_replayer/actions.txt'])
+assert(writes['mp_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['mp_replayer/actions.txt'])
 assert(session.text:find('2 actions') and not session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
 local other = {getFilename = function() return 'notes.txt' end}
 love.filedropped(other)
 assert(session.runs[1].actions == 2, 'other files are not logs')
 
 -- A failing start is reported in the status, not raised at the button.
-G.FUNCS.brpl_start()
+G.FUNCS.mprpl_start()
 assert(session.phase == 'idle' and session.text:find('Multiplayer is required'), session.text)
-G.FUNCS.brpl_next()
+G.FUNCS.mprpl_next()
 assert(session.index == 1, 'a single run has nothing to cycle')
 
 -- Isolate removal fixtures from the already tested replacement workflow.
@@ -103,13 +103,13 @@ session.runs, session.log_runs, session.log_imports = nil, nil, nil
 -- Stable replay numbering survives removals and the final removal clears selection.
 session.load(text .. text)
 assert(#session.runs == 2 and session.runs[2].label_number == 2)
-G.FUNCS.brpl_remove()
+G.FUNCS.mprpl_remove()
 assert(#session.runs == 1 and session.runs[1].label_number == 2 and session.replay_title:find('Replay 2'))
 assert(session.confirmed == nil and session.replay_seed:find('TEST'))
-G.FUNCS.brpl_remove()
+G.FUNCS.mprpl_remove()
 assert(session.runs == nil and session.replay_title == 'No replay selected')
-assert(writes['balatro_replayer/actions.txt'] == '')
-G.FUNCS.brpl_next(); G.FUNCS.brpl_remove()
+assert(writes['mp_replayer/actions.txt'] == '')
+G.FUNCS.mprpl_next(); G.FUNCS.mprpl_remove()
 assert(not pcall(session.start), 'empty selection cannot start')
 session.runs, session.log_runs, session.log_imports = nil, nil, nil
 session.load(text)
@@ -118,7 +118,7 @@ local old_stop = session.stop
 local removed_active = false
 session.stop = function() removed_active = true; session.phase = 'idle' end
 session.phase = 'running'
-G.FUNCS.brpl_remove()
+G.FUNCS.mprpl_remove()
 assert(removed_active and session.runs == nil)
 session.stop = old_stop
 
@@ -130,14 +130,14 @@ session.runs, session.log_runs, session.log_imports = nil, nil, nil
 session.load(text .. text .. text .. text, 'C:/logs/match.log')
 assert(session.log_filename == 'match.log' and session.log_count == '4 replays loaded')
 assert(session.log_game1:find('1%. ') and session.log_setup1 == 'Deck: Red Deck | White Stake')
-G.FUNCS.brpl_log_next()
+G.FUNCS.mprpl_log_next()
 assert(session.log_game1:find('4%. ') and session.log_game2 == '')
-G.FUNCS.brpl_log_prev()
+G.FUNCS.mprpl_log_prev()
 assert(session.log_game1:find('1%. '))
 session.remove_run()
 assert(#session.log_runs == 4 and #session.runs == 3, 'source log info survives list removal')
 assert(not session.replay_setup:find('b_red'))
-assert(not session.text:find('balatro_replayer'))
+assert(not session.text:find('mp_replayer'))
 
 -- Badges require recorded evidence, not merely a Multiplayer-format log.
 assert(session.game_type({lobby_code = 'ABC'}) == 'Multiplayer')
@@ -179,22 +179,22 @@ session.start = function()
         session.confirmed, session.confirmed_mods = selected, 'test-mods'
     end
 end
-G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+G.FUNCS.mprpl_start_listed({config = {ref_table = selected}})
 assert(session.phase == 'idle' and G.OVERLAY_MENU.no_back)
 local controls = G.OVERLAY_MENU.contents[4]
-assert(controls.nodes[1].config.button == 'brpl_cancel_replay')
+assert(controls.nodes[1].config.button == 'mprpl_cancel_replay')
 assert(controls.nodes[1].config.colour == G.C.RED)
-assert(controls.nodes[3].config.button == 'brpl_continue_replay')
-G.FUNCS.brpl_cancel_replay()
+assert(controls.nodes[3].config.button == 'mprpl_continue_replay')
+G.FUNCS.mprpl_cancel_replay()
 assert(session.phase == 'idle' and not session.confirmed)
-G.FUNCS.brpl_continue_replay()
+G.FUNCS.mprpl_continue_replay()
 assert(starts == 1, 'cancelled confirmation cannot start')
-G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
-G.FUNCS.brpl_continue_replay()
+G.FUNCS.mprpl_start_listed({config = {ref_table = selected}})
+G.FUNCS.mprpl_continue_replay()
 assert(starts == 3 and session.phase == 'joining')
 session.phase = 'idle'
 session.remove_run()
-G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
+G.FUNCS.mprpl_start_listed({config = {ref_table = selected}})
 assert(session.runs[session.index] == selected)
 session.phase = 'running'
 assert(not pcall(session.start_listed, selected))
@@ -231,7 +231,7 @@ local function pack(...) return {n = select('#', ...), ...} end
 local result = pack(Game:update(0.1))
 assert(result.n == 2 and result[2] == 42)
 assert(Game:start_run({}) == 7 and Game:main_menu('game') == 'menu')
-assert(writes['balatro_replayer/status.json']:find('"phase":"idle"'))
+assert(writes['mp_replayer/status.json']:find('"phase":"idle"'))
 local stop_calls = 0
 local actual_stop = session.stop
 session.stop = function()
@@ -241,9 +241,9 @@ session.stop = function()
 end
 G.FUNCS.exit_overlay_menu = function() G.OVERLAY_MENU = nil end
 session.phase = 'running'; G.OVERLAY_MENU = {}
-G.FUNCS.brpl_end()
+G.FUNCS.mprpl_end()
 assert(stop_calls == 1 and session.phase == 'idle')
-G.FUNCS.brpl_end()
+G.FUNCS.mprpl_end()
 assert(stop_calls == 1, 'End Replay is harmless outside replays')
 session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')
