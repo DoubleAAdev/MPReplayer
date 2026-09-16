@@ -1,3 +1,10 @@
+# MP Replayer 2.9.15
+
+- Remove the recorded action count from the Replay Ended screen.
+- Restyle the fast-forward control like the run HUD: an embossed dark panel with a Speed label, an inset value and orange arrow buttons.
+
+Validation: ten Lua suites. Restart Balatro to load the update.
+
 # MP Replayer 2.9.14
 
 - Fix hand drags logged right after a play being applied to the hand before the played cards left it. The drag was then undone by the redraw, so later Death, Chariot and Strength targets hit different cards and the deck drifted from the log.

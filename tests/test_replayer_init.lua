@@ -286,7 +286,7 @@ G.STAGE, G.deck = G.STAGES.RUN, {}
 session.phase = 'running'
 Game:update(0.016)
 assert(#boxes == 1 and boxes[1].args.config.major == G.deck and updates == 1)
-local row = boxes[1].args.definition.nodes
+local row = boxes[1].args.definition.nodes[1].nodes[2].nodes
 local label = row[2].nodes[1].config.ref_table
 assert(label.label == '1x' and row[1].config.button == 'mprpl_speed_down' and row[3].config.button == 'mprpl_speed_up')
 G.FUNCS.mprpl_speed_down()

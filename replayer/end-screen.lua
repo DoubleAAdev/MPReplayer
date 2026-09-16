@@ -50,7 +50,6 @@ return function(session, show_replays, after_start)
                 row({text(clean(session.deck_name(m), 30), 0.42)}, 'cl'),
                 row({sprite(stake, 'chips', 0.4, 0.4, ''), text(session.stake_name(m.stake), 0.36)}, 'cl'),
                 row({text('Seed: ' .. clean(m.seed, 28), 0.34)}, 'cl'),
-                row({text(tostring(run.actions or 0) .. ' recorded actions', 0.28, G.C.UI and G.C.UI.TEXT_LIGHT)}, 'cl'),
             }}
         }}
         local winner, loser

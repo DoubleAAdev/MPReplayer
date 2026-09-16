@@ -209,16 +209,23 @@ return function(mod, JSON)
             set_speed(1)
         elseif not speed_box then
             speed_deck = G.deck
+            -- Styled like the run HUD's boxes: a dark embossed panel, a
+            -- label over an inset value, and orange buttons like Options.
+            local dyn = G.C.DYN_UI or {}
             local function arrow(text, callback)
-                return {n = G.UIT.C, config = {align = 'cm', button = callback, colour = G.C.ORANGE, r = 0.1,
-                    minw = 0.4, minh = 0.4, hover = true, shadow = true}, nodes = {
-                    {n = G.UIT.T, config = {text = text, scale = 0.32, colour = G.C.WHITE, shadow = true}}}}
+                return {n = G.UIT.C, config = {align = 'cm', button = callback, colour = G.C.ORANGE, r = 0.08,
+                    minw = 0.42, minh = 0.42, hover = true, shadow = true, emboss = 0.04}, nodes = {
+                    {n = G.UIT.T, config = {text = text, scale = 0.34, colour = G.C.WHITE, shadow = true}}}}
             end
-            speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.05}, nodes = {
-                arrow('<', 'mprpl_speed_down'),
-                {n = G.UIT.C, config = {align = 'cm', colour = G.C.BLACK, r = 0.1, minw = 0.9, minh = 0.4}, nodes = {
-                    {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.32, colour = G.C.WHITE, shadow = true}}}},
-                arrow('>', 'mprpl_speed_up')}},
+            speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
+                {n = G.UIT.C, config = {align = 'cm', colour = dyn.MAIN or G.C.BLACK, r = 0.12, padding = 0.07, emboss = 0.05}, nodes = {
+                    {n = G.UIT.R, config = {align = 'cm'}, nodes = {
+                        {n = G.UIT.T, config = {text = 'Speed', scale = 0.28, colour = G.C.WHITE, shadow = true}}}},
+                    {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
+                        arrow('<', 'mprpl_speed_down'),
+                        {n = G.UIT.C, config = {align = 'cm', colour = dyn.BOSS_DARK or G.C.BLACK, r = 0.08, minw = 0.95, minh = 0.42}, nodes = {
+                            {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.34, colour = G.C.WHITE, shadow = true}}}},
+                        arrow('>', 'mprpl_speed_up')}}}}}},
                 config = {align = 'tm', offset = {x = 0, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
