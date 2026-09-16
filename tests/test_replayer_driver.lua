@@ -183,6 +183,14 @@ G.round_eval = {}
 status, why = driver.perform(entry('use', {'1'}, 'usedCard,card:Buffoon Pack'))
 assert(status == 'wait' and why == 'cashing out', 'a shop item named during cash out means the shop comes next')
 assert(driver.perform(entry('use', {'1'}, 'usedCard,card:The Fool')) == 'done', 'a consumable can be used while cashing out')
+local hermit = entry('use', {'1'}, 'usedCard,card:The Fool')
+hermit.after_cash_out = true
+status, why = driver.perform(hermit)
+assert(status == 'wait' and why == 'cashing out' and last() == 'cash_out', 'a card the log used in the shop waits for the cash out')
+local sold = entry('sell', {'5', '1'}, 'soldCard,card:The Fool')
+sold.after_cash_out = true
+status, why = driver.perform(sold)
+assert(status == 'wait' and why == 'cashing out', 'a sale the log made in the shop waits for the cash out')
 G.round_eval = nil
 
 -- pack_pick waits for the pack, then checks the card.

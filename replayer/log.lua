@@ -128,6 +128,8 @@ return function(decode)
     function M.parse(text)
         assert(type(text) == 'string' and #text <= 16 * 1024 * 1024, 'Log exceeds 16 MB')
         local runs, run, lobby, pending, paying, number = {}, nil, nil, nil, nil, 0
+        -- Whether the player reached the shop since the last action.
+        local shopped
         -- Replays before MP Replayer wrote their own run into the Lovely
         -- log, so those logs hold games nobody played. Their status lines say
         -- which: "Replay starting run <seed>" just before the manifest, and
@@ -168,8 +170,9 @@ return function(decode)
                         run.actions = run.actions + 1
                         pending = {kind = 'action', seq = tonumber(seq), op = op, args = tokens, money = {},
                             text = op .. (#tokens > 0 and (' ' .. table.concat(tokens, ' ')) or ''), line = number,
-                            position = #run.entries + 1}
+                            position = #run.entries + 1, after_cash_out = shopped}
                         run.entries[#run.entries + 1] = pending
+                        shopped = nil
                         paying = pending
                     end
                 end
@@ -178,6 +181,8 @@ return function(decode)
                 local started = not human and line:match(':: BalatroObserver :: Replay starting run (%S+)')
                 if started then
                     replaying = started
+                elseif line:find(':: MULTIPLAYER :: Client sent message: {"location":"loc_shop', 1, true) then
+                    shopped = true
                 elseif run and not human and line:find(':: BalatroObserver :: Replay running', 1, true) then
                     run.replayed = true
                 elseif human then

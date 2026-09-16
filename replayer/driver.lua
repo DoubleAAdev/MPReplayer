@@ -286,6 +286,7 @@ return function(log)
     end
 
     handlers.sell = function(entry)
+        if entry.after_cash_out and state_is('ROUND_EVAL') then return leave_round_eval() end
         local area_name = areas[tonumber(entry.args[1])]
         if area_name ~= 'jokers' and area_name ~= 'consumeables' then error('sell from ' .. tostring(area_name) .. ' is not possible') end
         local card, why = card_at(area_name, tonumber(entry.args[2]), log.expectation(entry).name)
@@ -300,6 +301,9 @@ return function(log)
     -- "use" names a slot but no area: consumables, shop packs and shop
     -- vouchers all go through use_card. The mirrored card name settles it.
     handlers.use = function(entry)
+        -- Cards can be used on the round results too; the Hermit doubles
+        -- different money before and after the cash out.
+        if entry.after_cash_out and state_is('ROUND_EVAL') then return leave_round_eval() end
         local slot = tonumber(entry.args[1])
         local name = log.expectation(entry).name
         if not name then error('the log does not name the card used at slot ' .. slot) end

@@ -153,6 +153,10 @@ assert(not pcall(log.parse, head .. 'MP_RLOG: 1 set_ante_key 0.5'), 'a run of no
 local slow = 'INFO - [G] LONG DT @ 12: 0.07' .. NL
 local timed = log.parse(slow .. head .. 'MP_RLOG: 1 reroll' .. NL .. slow .. P .. 'MP_RLOG: 2 reroll')
 assert(#timed == 1 and timed[1].actions == 2)
+-- An action after the player reached the shop is marked as after the cash out.
+local shop_line = P .. 'Client sent message: {"location":"loc_shop-bl_big","action":"setLocation"}' .. NL
+local cashed = log.parse(head .. 'MP_RLOG: 1 reroll' .. NL .. shop_line .. P .. 'MP_RLOG: 2 use 1' .. NL .. P .. 'MP_RLOG: 3 use 1')[1].entries
+assert(cashed[1].after_cash_out == nil and cashed[2].after_cash_out == true and cashed[3].after_cash_out == nil)
 -- A log an old replay wrote is told apart from a game: by the status line
 -- that started it, for that seed only, or by the one saying it was running.
 local debug_line = 'INFO - [G] 2026-09-12 13:27:24 :: DEBUG :: BalatroObserver :: '
