@@ -6,3 +6,7 @@ The user explicitly requires GitHub synchronization whenever a change is complet
 - This is standing authorization for future completed changes, not approval limited to a particular version. Do not ask again for routine commits or pushes.
 - Verify that the remote branch matches the local commit after pushing.
 - Never force-push to bypass remote changes, and do not include unrelated local files or credentials.
+
+# Versioning
+
+The user authorizes version increments as needed: patch (x.y.Z) for non-major changes and minor (x.Y.0) for major changes. This replaces the earlier temporary instruction to keep 2.8.0 unchanged.

@@ -62,6 +62,8 @@ G.FUNCS.openModUI_BalatroReplayer = function()
 end
 G.FUNCS.brpl_details()
 assert(G.OVERLAY_MENU.back_func == 'brpl_details_back')
+assert(#G.OVERLAY_MENU.contents == 2, 'no-data comparison should only show title and a short message')
+assert(G.OVERLAY_MENU.contents[2].nodes[1].config.ref_value == 'mod_overview')
 G.FUNCS.brpl_details_back()
 assert(opened == 1)
 G.OVERLAY_MENU = nil

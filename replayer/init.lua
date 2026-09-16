@@ -160,14 +160,19 @@ return function(mod, JSON)
         local rows = {
             {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
                 {n = G.UIT.T, config = {text = 'Compare Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
-            row('replay_title', 0.4),
-            row('mod_missing'), row('mod_extra'), row('mod_versions'), row('mod_risk', 0.32),
+            row('mod_overview', 0.44),
         }
-        if session.mod_missing == '' then rows[#rows + 1] = row('mod_summary') end
-        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
-            {n = G.UIT.T, config = {text = 'Recorded in log / Loaded in this game', scale = 0.35, colour = G.C.WHITE}}}}
-        for _, field in ipairs({'mod_detail1', 'mod_detail2', 'mod_detail3', 'mod_position'}) do rows[#rows + 1] = row(field) end
-        rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
+        if session.mod_hint ~= '' then rows[#rows + 1] = row('mod_hint', 0.34) end
+        if #session.mod_pages > 0 then
+            rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.18, r = 0.12,
+                colour = G.C.BLACK or G.C.CLEAR, minw = 6.3}, nodes = {
+                {n = G.UIT.C, config = {align = 'cl', padding = 0.06}, nodes = {
+                    row('mod_detail1', 0.4), row('mod_detail2', 0.38), row('mod_detail3', 0.38)}}}}
+            if #session.mod_pages > 1 then
+                rows[#rows + 1] = row('mod_position', 0.3)
+                rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
+            end
+        end
         G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'brpl_details_back', contents = rows}}
     end
     mod.config_tab = function() return mod.extra_tabs()[1].tab_definition_function() end

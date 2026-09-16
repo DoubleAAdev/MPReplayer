@@ -351,7 +351,7 @@ return function(log, driver, JSON, deps)
         S.mod_page_index = #pages > 0 and ((S.mod_page_index or 1) - 1 + (delta or 0)) % #pages + 1 or 1
         local page = pages[S.mod_page_index] or {}
         S.mod_detail1, S.mod_detail2, S.mod_detail3 = page[1] or '', page[2] or '', page[3] or ''
-        S.mod_position = #pages > 0 and ('Details ' .. S.mod_page_index .. '/' .. #pages) or 'No differences to list'
+        S.mod_position = #pages > 0 and (S.mod_page_index .. ' / ' .. #pages) or ''
     end
 
     -- Reviewed presentation/control mods; unknown IDs remain potentially critical.
@@ -368,6 +368,8 @@ return function(log, driver, JSON, deps)
         S.mod_pages, S.mod_page_index = {}, 1
         S.mod_summary = not run and 'Load a replay to compare mods' or 'Mod information unavailable'
         S.mod_missing, S.mod_extra, S.mod_versions = '', '', ''
+        S.mod_overview = not run and 'Load a log first' or 'No mod data in this log'
+        S.mod_hint = ''
         local differences = {}
         local critical = 0
         S.mod_risk = 'Compatibility not assessed'
@@ -392,6 +394,8 @@ return function(log, driver, JSON, deps)
             for _, id in ipairs(extra) do differences[#differences + 1] = {'Extra: ' .. id, 'Log: absent', 'Loaded: ' .. loaded[id]} end
             for _, id in ipairs(changed) do differences[#differences + 1] = {'Version: ' .. id, 'Log: ' .. logged[id], 'Loaded: ' .. loaded[id]} end
             if #differences == 0 then S.mod_summary = 'Mods match the log' end
+            S.mod_overview = #differences == 0 and 'Mods match' or (#differences .. (#differences == 1 and ' difference' or ' differences'))
+            S.mod_hint = critical > 0 and 'May affect replay' or (#differences > 0 and 'Display / controls only' or '')
         end
         for _, entry in ipairs(differences) do
             local lines = {}
