@@ -85,6 +85,7 @@ return function(mod, JSON)
     end
     local pending_confirmation
     local show_confirmation
+    local show_active_replay
     local function after_start()
         guard().update()
         if session.phase == 'idle' and session.confirmed then
@@ -97,6 +98,7 @@ return function(mod, JSON)
         end
     end
     G.FUNCS.mprpl_start_listed = function(e)
+        if session.phase ~= 'idle' then return show_active_replay() end
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
         protect(function() session.start_listed(e.config.ref_table) end)
@@ -127,6 +129,7 @@ return function(mod, JSON)
     end
     G.FUNCS.mprpl_next = function() protect(session.next_run) end
     G.FUNCS.mprpl_start = function()
+        if session.phase ~= 'idle' then return show_active_replay() end
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
         protect(session.start)
@@ -209,6 +212,20 @@ return function(mod, JSON)
         return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
             left, {n = G.UIT.C, config = {minw = 0.12}}, right}}
     end
+    show_active_replay = function()
+        local function message(value, scale)
+            return {n = G.UIT.R, config = {align = 'cm', padding = 0.1}, nodes = {
+                {n = G.UIT.T, config = {text = value, scale = scale, colour = G.C.WHITE, shadow = true}}}}
+        end
+        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{no_back = true, contents = {
+            message('Replay already active', 0.55),
+            message('End the current replay before', 0.38),
+            message('starting another one.', 0.38),
+            {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
+                button('Back to Replays', 'mprpl_active_back', 4.2, G.C.BLUE)}},
+        }}}
+    end
+    G.FUNCS.mprpl_active_back = show_replays
     show_confirmation = function()
         local function message(text, scale)
             return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {

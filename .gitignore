@@ -90,3 +90,6 @@ __pycache__/
 
 # Local replay-footer UI captures
 /footer-qa/
+
+# Local active-replay popup captures
+/active-replay-qa/

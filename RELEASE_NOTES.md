@@ -1,6 +1,7 @@
-# MP Replayer 2.9.4
+# MP Replayer 2.9.5
 
-- Remove every status-text row beneath the replay list, including cancellation, progress and error messages.
-- Keep diagnostics in status.json and retain replay-start confirmation dialogs.
+- Show a Replay already active popup when Start Replay is pressed during an existing replay.
+- Explain that the current replay must end first, with a Back to Replays button.
+- Preserve the current replay and selection, including failed or finished sessions awaiting exit.
 
-Validation: nine Lua suites passed. Restart Balatro to load the update.
+Validation: nine Lua suites. Restart Balatro to load the update.

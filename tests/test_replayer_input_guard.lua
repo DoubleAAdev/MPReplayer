@@ -142,6 +142,13 @@ for _, name in ipairs(gameplay) do
 end
 -- Restore the earlier baseline for the detached/closed menu checks below.
 counts.mod_setting_toggle = 1
+-- Start buttons must reach their guarded UI callbacks so they can explain
+-- why another replay cannot start. They remain blocked outside menus.
+for _, name in ipairs({'mprpl_start_listed', 'mprpl_start', 'mprpl_active_back'}) do
+    G.FUNCS[name] = function() return hit(name) end
+    assert(UIElement.click({UIBox = nested_box, config = {button = name}}) == name)
+    assert(UIElement.click({UIBox = {}, config = {button = name}}) == nil)
+end
 -- An open menu must not unlock background actions or gameplay callbacks.
 for _, name in ipairs(gameplay) do
     UIElement.click({UIBox = G.OVERLAY_MENU, config = {button = name}})

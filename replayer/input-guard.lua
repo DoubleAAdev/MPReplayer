@@ -27,7 +27,7 @@ return function(session)
         cash_out = true, toggle_shop = true, start_setup_run = true, setup_run = true,
         start_run = true, go_to_menu = true, mp_unstuck = true, mp_unstuck_blind = true,
         mp_unstuck_arcana = true, lobby_leave = true, mp_return_to_lobby = true,
-        lobby_choose_deck = true, mprpl_start_listed = true, mprpl_start = true, mprpl_load = true, mprpl_next = true,
+        lobby_choose_deck = true, mprpl_load = true, mprpl_next = true,
     }
     local function in_overlay(node)
         if not G.OVERLAY_MENU or not node or node.under_overlay then return false end

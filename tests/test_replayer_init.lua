@@ -210,6 +210,20 @@ session.phase = 'running'
 assert(not pcall(session.start_listed, selected))
 session.phase = 'idle'
 assert(not pcall(session.start_listed, {}))
+-- Attempts to start inside any active replay state show a popup, not a
+-- hidden status message, and never change selection or dispatch a start.
+local saved_index, before_attempts = session.index, starts
+for _, phase in ipairs({'joining', 'starting', 'running', 'failed', 'finished', 'stopped'}) do
+    session.phase = phase
+    for _, attempt in ipairs({function() G.FUNCS.mprpl_start_listed({config = {ref_table = selected}}) end,
+        G.FUNCS.mprpl_start}) do
+        attempt()
+        assert(G.OVERLAY_MENU.contents[1].nodes[1].config.text == 'Replay already active')
+        assert(session.phase == phase and session.index == saved_index and starts == before_attempts)
+        assert(G.OVERLAY_MENU.contents[4].nodes[1].config.button == 'mprpl_active_back')
+    end
+end
+session.phase = 'idle'
 session.start = original_start
 
 -- Name-based manifests resolve the same sprite as center keys.
