@@ -77,7 +77,7 @@ local session = dofile('replayer/session.lua')(log, driver, JSON,
 
 -- Loading filters the log to its actions and lists them for the player.
 session.load(text)
-assert(session.runs and session.runs[1].actions == 6 and session.text:find('6 actions, seed TESTSEED'), session.text)
+assert(session.runs and session.runs[1].actions == 6 and session.text:find('6 actions') and session.replay_seed == 'Seed: TESTSEED', session.text)
 local listed = writes['balatro_replayer/actions.txt']
 assert(listed:find('^MANIFEST {}\n') and listed:find('OP_NUM: 3 || OP: play') and not listed:find('set_ante_key'), listed)
 

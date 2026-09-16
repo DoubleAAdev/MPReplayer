@@ -155,17 +155,45 @@ return function(log, driver, JSON, deps)
         local text = tostring(value or ''):gsub('[%c]', ' ')
         return #text > limit and (text:sub(1, limit - 3) .. '...') or text
     end
+    local function deck_name(m)
+        local localized = (((G.localization or {}).descriptions or {}).Back or {})[m.deck]
+        if localized and type(localized.name) == 'string' then return localized.name end
+        local name = ((G.P_CENTERS or {})[m.deck] or {}).name
+        if name and not name:match('^b_') then return name end
+        local fallback = tostring(m.deck):gsub('^b_mp_', ''):gsub('^b_', ''):gsub('_', ' ')
+        fallback = fallback:gsub('(%a)([%w]*)', function(first, rest) return first:upper() .. rest end)
+        return fallback .. ' Deck'
+    end
+    function S.log_page(delta)
+        local runs = S.log_runs or {}
+        local pages = math.max(1, math.ceil(#runs / 3))
+        S.log_page_index = ((S.log_page_index or 1) - 1 + (delta or 0)) % pages + 1
+        S.log_filename = S.log_source or 'No log loaded'
+        S.log_count = #runs .. ' games in this log'
+        S.log_position = 'Page ' .. S.log_page_index .. ' of ' .. pages
+        for slot = 1, 3 do
+            local run = runs[(S.log_page_index - 1) * 3 + slot]
+            local title, setup = '', ''
+            if run then
+                local m = run.manifest
+                title = run.label_number .. '. ' .. short(m.player or 'Unknown player', 15) .. ' vs ' .. short(m.opponent or 'Unknown opponent', 15)
+                setup = 'Deck: ' .. short(deck_name(m), 22) .. ' | Stake: ' .. tostring(m.stake)
+            end
+            S['log_game' .. slot], S['log_setup' .. slot] = title, setup
+        end
+    end
+    S.log_page()
     function S.label_run()
         local run = S.runs and S.runs[S.index]
         if not run then
-            S.replay_title, S.replay_players, S.replay_setup = 'No replay selected', 'Choose Load Log to get started', ''
+            S.replay_title, S.replay_players, S.replay_setup, S.replay_seed = 'No replay selected', 'Choose Load Log to get started', '', ''
             return
         end
         local m = run.manifest
         S.replay_title = 'Replay ' .. tostring(run.label_number or S.index) .. '  (' .. S.index .. ' of ' .. #S.runs .. ')'
         S.replay_players = short(m.player or 'Unknown player', 18) .. ' vs ' .. short(m.opponent or 'Unknown opponent', 18)
-        local deck = ((G.P_CENTERS or {})[m.deck] or {}).name or m.deck
-        S.replay_setup = short(deck, 12) .. ' / Stake ' .. tostring(m.stake) .. ' / ' .. short(m.seed, 12)
+        S.replay_setup = short(deck_name(m), 24) .. '  |  Stake: ' .. tostring(m.stake)
+        S.replay_seed = 'Seed: ' .. short(m.seed, 24)
         S.replay_title = S.replay_title .. (run.replayed and ' - old replay' or (run.complete and ' - complete' or ' - partial'))
     end
     S.label_run()
@@ -178,14 +206,18 @@ return function(log, driver, JSON, deps)
             love.filesystem.createDirectory(directory)
             love.filesystem.write(directory .. '/actions.txt', log.table(run))
         end)
-        S.status('Replayer: run ' .. S.index .. '/' .. #S.runs .. ' - ' .. run.actions .. ' actions, seed ' .. run.manifest.seed ..
-            (run.replayed and ' - WRITTEN BY AN OLD REPLAY, NOT A GAME YOU PLAYED' or '') .. ' - listed in balatro_replayer/actions.txt')
+        S.status(run.replayed and 'Recorded by an older replay.' or ('Ready to replay - ' .. run.actions .. ' actions.'))
     end
 
-    function S.load(text)
+    function S.load(text, source)
         assert(S.phase == 'idle', 'Finish the current replay before loading another log')
         S.runs = log.parse(text)
         for number, run in ipairs(S.runs) do run.label_number = number end
+        S.log_runs = {}
+        for i, run in ipairs(S.runs) do S.log_runs[i] = run end
+        S.log_source = short(tostring(source or 'Loaded log'):gsub('\\', '/'):match('[^/]+$'), 40)
+        S.log_page_index = 1
+        S.log_page()
         S.index = 1
         show_run()
     end
@@ -320,7 +352,7 @@ return function(log, driver, JSON, deps)
         local differs, signature = S.refresh_mods()
         if differs and (S.confirmed ~= run or S.confirmed_mods ~= signature) then
             S.confirmed, S.confirmed_mods = run, signature
-            S.status('Mods differ. Open Mod Details. Replay may stop early. Press Start Replay again to continue.')
+            S.status('Mods differ. Open Compare Replay Mods. Replay may stop early. Press Start Replay again to continue.')
             return
         end
         S.confirmed = nil

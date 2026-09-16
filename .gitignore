@@ -45,3 +45,6 @@ __pycache__/
 
 # Local UI layout captures
 /ui-captures/
+
+# Local log-inspection scratch exports
+/log-inspection/

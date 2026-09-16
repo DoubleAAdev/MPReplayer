@@ -35,7 +35,7 @@ return function(mod, JSON)
             if not path then return end
             local info = NFS.getInfo(path)
             assert(info and info.type == 'file' and info.size and info.size <= limit, 'Select a log file smaller than 16 MB')
-            session.load(assert(NFS.read(path), 'Could not read the selected log'))
+            session.load(assert(NFS.read(path), 'Could not read the selected log'), path)
         end)
     end
     G.FUNCS.brpl_remove = function()
@@ -47,6 +47,8 @@ return function(mod, JSON)
         protect(session.start)
         guard().update()
     end
+    G.FUNCS.brpl_log_prev = function() session.log_page(-1) end
+    G.FUNCS.brpl_log_next = function() session.log_page(1) end
     G.FUNCS.brpl_mod_prev = function() session.mod_page(-1) end
     G.FUNCS.brpl_mod_next = function() session.mod_page(1) end
     G.FUNCS.brpl_end = function()
@@ -68,7 +70,7 @@ return function(mod, JSON)
                 file:open('r')
                 local text = file:read()
                 file:close()
-                session.load(text)
+                session.load(text, file:getFilename())
             end)
         elseif previous_drop then
             return previous_drop(file)
@@ -121,7 +123,7 @@ return function(mod, JSON)
         session.refresh_mods()
         local rows = {
             {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
-                {n = G.UIT.T, config = {text = 'Replay Mod Details', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
+                {n = G.UIT.T, config = {text = 'Compare Replay Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
             row('replay_title', 0.4),
             row('mod_missing'), row('mod_extra'), row('mod_versions'),
         }
@@ -134,14 +136,28 @@ return function(mod, JSON)
     end
     mod.config_tab = function()
         session.label_run()
-        local rows = {row('replay_title', 0.42), row('replay_players', 0.38), row('replay_setup', 0.34)}
+        local rows = {row('replay_title', 0.42), row('replay_players', 0.38), row('replay_setup', 0.36), row('replay_seed', 0.32)}
         for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do rows[#rows + 1] = row(field, 0.32) end
         rows[#rows + 1] = buttons(button('Load Log', 'brpl_load'), button('Next Replay', 'brpl_next'))
         rows[#rows + 1] = buttons(button('Start Replay', 'brpl_start', nil, G.C.GREEN), button('Remove Replay', 'brpl_remove', nil, G.C.RED))
-        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {button('Mod Details', 'brpl_details', 6.3)}}
+        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {button('Compare Replay Mods', 'brpl_details', 6.3)}}
         rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {
-            {n = G.UIT.T, config = {text = 'Remove Replay clears this list entry; the log is kept.', scale = 0.28, colour = G.C.WHITE}}}}
+            {n = G.UIT.T, config = {text = 'Remove clears the selection from the list only.', scale = 0.28, colour = G.C.WHITE}}}}
         return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
+    end
+    mod.extra_tabs = function()
+        return {{label = 'Log Info', tab_definition_function = function()
+            session.log_page()
+            local rows = {row('log_filename', 0.4), row('log_count', 0.34)}
+            for slot = 1, 3 do
+                rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
+                    {n = G.UIT.C, config = {align = 'cm', padding = 0.06}, nodes = {
+                        row('log_game' .. slot, 0.36), row('log_setup' .. slot, 0.32)}}}}
+            end
+            rows[#rows + 1] = row('log_position', 0.32)
+            rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
+            return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
+        end}}
     end
     return session
 end

@@ -30,7 +30,7 @@ assert(BalatroReplayer == session and session.phase == 'idle')
 
 -- Larger native controls, identity fields and separate mod details.
 local tab = mod.config_tab()
-assert(tab.n == G.UIT.ROOT and #tab.nodes == 11)
+assert(tab.n == G.UIT.ROOT and #tab.nodes == 12)
 assert(tab.nodes[1].nodes[1].config.ref_value == 'replay_title')
 assert(tab.nodes[1].nodes[1].config.scale >= 0.4)
 local buttons = {}
@@ -64,7 +64,7 @@ love.filedropped(dropped)
 assert(session.runs ~= loaded and session.runs[1].actions == 2, session.text)
 -- The filtered actions are written out for the player to read.
 assert(writes['balatro_replayer/actions.txt'] == 'MANIFEST {}\nOP_NUM: 1 || OP: reroll ||\nOP_NUM: 2 || OP: reroll ||\n', writes['balatro_replayer/actions.txt'])
-assert(session.text:find('2 actions') and session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
+assert(session.text:find('2 actions') and not session.text:find('actions.txt') and not session.text:find('OLD REPLAY'), session.text)
 local other = {getFilename = function() return 'notes.txt' end}
 love.filedropped(other)
 assert(session.runs[1].actions == 2, 'other files are not logs')
@@ -80,7 +80,7 @@ session.load(text .. text)
 assert(#session.runs == 2 and session.runs[2].label_number == 2)
 G.FUNCS.brpl_remove()
 assert(#session.runs == 1 and session.runs[1].label_number == 2 and session.replay_title:find('Replay 2'))
-assert(session.confirmed == nil and session.replay_setup:find('TEST'))
+assert(session.confirmed == nil and session.replay_seed:find('TEST'))
 G.FUNCS.brpl_remove()
 assert(session.runs == nil and session.replay_title == 'No replay selected')
 assert(writes['balatro_replayer/actions.txt'] == '')
@@ -95,6 +95,22 @@ session.phase = 'running'
 G.FUNCS.brpl_remove()
 assert(removed_active and session.runs == nil)
 session.stop = old_stop
+
+-- A native third tab describes the source log, including removed entries.
+local tabs = mod.extra_tabs()
+assert(#tabs == 1 and tabs[1].label == 'Log Info')
+assert(tabs[1].tab_definition_function().n == G.UIT.ROOT)
+session.load(text .. text .. text .. text, 'C:/logs/match.log')
+assert(session.log_filename == 'match.log' and session.log_count == '4 games in this log')
+assert(session.log_game1:find('1%. ') and session.log_setup1 == 'Deck: Red Deck | Stake: 1')
+G.FUNCS.brpl_log_next()
+assert(session.log_game1:find('4%. ') and session.log_game2 == '')
+G.FUNCS.brpl_log_prev()
+assert(session.log_game1:find('1%. '))
+session.remove_run()
+assert(#session.log_runs == 4 and #session.runs == 3, 'source log info survives list removal')
+assert(not session.replay_setup:find('b_red'))
+assert(not session.text:find('balatro_replayer'))
 
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end
