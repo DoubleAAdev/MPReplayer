@@ -36,11 +36,20 @@ return function(mod, JSON)
         local original = create_UIBox_mods
         create_UIBox_mods = function(...)
             if G.ACTIVE_MOD_UI ~= mod then return original(...) end
+            if session.phase ~= 'idle' then
+                SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
+                local tab = mod.extra_tabs()[1]
+                tab.chosen = true
+                return create_UIBox_generic_options{back_func = 'mods_button', contents = {
+                    {n = G.UIT.R, config = {align = 'cm'}, nodes = {
+                        create_tabs{tabs = {tab}, tab_h = 7, snap_to_nav = true}}}
+                }}
+            end
             -- Keep Steamodded's native gear, but suppress its separate Config tab.
             local config_tab = mod.config_tab
             mod.config_tab = nil
             if SMODS.LAST_SELECTED_MOD_TAB == 'config' then
-                SMODS.LAST_SELECTED_MOD_TAB = mod.id .. (session.phase ~= 'idle' and '_2' or '_1')
+                SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
             elseif session.phase == 'idle' and SMODS.LAST_SELECTED_MOD_TAB == mod.id .. '_2' then
                 SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
             end
@@ -284,6 +293,7 @@ return function(mod, JSON)
     end
     local debug_tab = load('debug.lua')(session, mod, JSON)
     mod.extra_tabs = function()
+        if session.phase ~= 'idle' then return {{label = 'Debug', tab_definition_function = debug_tab.definition}} end
         local tabs = {{label = 'Replays', tab_definition_function = function()
             session.log_page()
             local rows = {buttons(button('Load Log', 'mprpl_load', 4.0), button('Compare Mods', 'mprpl_details', 4.0)),
@@ -322,7 +332,6 @@ return function(mod, JSON)
             end
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
-        if session.phase ~= 'idle' then tabs[#tabs + 1] = {label = 'Debug', tab_definition_function = debug_tab.definition} end
         return tabs
     end
     end_screen = load('end-screen.lua')(session, show_replays, after_start)

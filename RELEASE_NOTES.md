@@ -1,8 +1,7 @@
-# MP Replayer 2.9.6
+# MP Replayer 2.9.7
 
-- Open Debug from the mod gear while a replay session is active; hide the tab after exiting.
-- Show replay progress, status, game state, errors, seed and paginated actions/network events with log line numbers.
-- Label entries DONE, NEXT, SENT or WAIT and offer a Current action shortcut.
-- Keep diagnostics read-only and retain the clean Replays page.
+- Show only Debug in the MP Replayer menu while a replay is active, including failed/finished sessions awaiting exit.
+- Hide the description and Replays tabs during playback, removing access to replay-start controls.
+- Restore the normal menu after ending the replay; keep Debug pagination working in its sole tab.
 
 Validation: ten Lua suites. Restart Balatro to load the update.

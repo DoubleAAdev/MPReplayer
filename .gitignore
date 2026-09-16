@@ -96,3 +96,6 @@ __pycache__/
 
 # Local replay debug UI captures
 /debug-tab-qa/
+
+# Local debug-only menu captures
+/debug-only-qa/

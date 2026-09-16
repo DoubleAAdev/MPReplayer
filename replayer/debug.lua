@@ -54,7 +54,7 @@ return function(session, mod, JSON)
     local function navigate(delta)
         if session.phase == 'idle' then return end
         if delta then page = (page or 1) + delta else page = nil end
-        SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_2'
+        SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
         local open = G.FUNCS['openModUI_' .. mod.id]
         if open then open() end
     end

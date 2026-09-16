@@ -19,7 +19,7 @@ G.FUNCS.openModUI_MPReplayer = function() opened = opened + 1 end
 local text = read()
 assert(text:find('Wrong card', 1, true) and text:find('NEXT | line 42', 1, true))
 assert(text:find('DONE | line 41', 1, true) and text:find('enemyInfo', 1, true))
-G.FUNCS.mprpl_debug_next(); assert(opened == 1 and SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_2')
+G.FUNCS.mprpl_debug_next(); assert(opened == 1 and SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
 assert(read():find('Page 2', 1, true))
 snapshot.cursor, snapshot.issued = 30, true
 G.FUNCS.mprpl_debug_current(); text = read()

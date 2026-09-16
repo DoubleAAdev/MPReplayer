@@ -274,10 +274,15 @@ print('PASS: config rows and buttons, picker and drop loading, guarded start, an
 
 assert(#mod.extra_tabs() == 1)
 session.phase = 'failed'
-assert(#mod.extra_tabs() == 2 and mod.extra_tabs()[2].label == 'Debug')
+assert(#mod.extra_tabs() == 1 and mod.extra_tabs()[1].label == 'Debug')
+function create_tabs(args)
+    assert(#args.tabs == 1 and args.tabs[1].label == 'Debug' and args.tabs[1].chosen)
+    return {n = G.UIT.R, config = {}, nodes = {}}
+end
 G.ACTIVE_MOD_UI = mod; SMODS.LAST_SELECTED_MOD_TAB = 'config'
-assert(create_UIBox_mods() == 'native_menu')
-assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_2')
+local debug_menu = create_UIBox_mods()
+assert(debug_menu.back_func == 'mods_button')
+assert(SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
 session.phase = 'idle'
 assert(create_UIBox_mods() == 'native_menu')
 assert(#mod.extra_tabs() == 1 and SMODS.LAST_SELECTED_MOD_TAB == 'MPReplayer_1')
