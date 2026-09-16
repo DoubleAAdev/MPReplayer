@@ -69,3 +69,5 @@ A replay writes nothing into the Lovely log. From **Start Replay** until you are
 - A hand reorder that leaves the hand exactly as the sort-by-suit or sort-by-rank button would is applied as that button, so later draws sort the same way.
 - The Multiplayer round timer is off during a replay, since a replay runs at animation speed. It changes no card.
 - Replayed wins and losses are not written to Multiplayer's match history. Career statistics count as in practice mode.
+
+Log Info uses native deck/stake icons and a Multiplayer badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.

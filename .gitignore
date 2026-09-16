@@ -48,3 +48,6 @@ __pycache__/
 
 # Local log-inspection scratch exports
 /log-inspection/
+
+# Local sprite inspection captures
+/sprite-inspection/

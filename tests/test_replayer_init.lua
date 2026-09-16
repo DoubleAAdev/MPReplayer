@@ -112,6 +112,24 @@ assert(#session.log_runs == 4 and #session.runs == 3, 'source log info survives 
 assert(not session.replay_setup:find('b_red'))
 assert(not session.text:find('balatro_replayer'))
 
+-- Badges require recorded evidence, not merely a Multiplayer-format log.
+assert(session.game_type({lobby_code = 'ABC'}) == 'Multiplayer')
+assert(session.game_type({practice = true, lobby_code = 'ABC'}) == 'Practice (solo)')
+assert(session.game_type({multiplayer = false}) == 'Single-player')
+assert(session.game_type({gamemode = 'gamemode_mp_attrition'}) == 'Game type unknown')
+G.ASSET_ATLAS = {centers = {}, chips = {}, mp_modicon = {}}
+G.P_CENTERS = {b_red = {pos = {x = 0, y = 0}}}
+G.P_CENTER_POOLS = {Stake = {{pos = {x = 0, y = 0}}}}
+local sprites = 0
+function Sprite(x, y, w, h, atlas, pos)
+    sprites = sprites + 1
+    return {states = {drag = {}, collide = {}}}
+end
+session.log_runs[1].manifest.lobby_code = 'ABC'
+local list = mod.extra_tabs()[1].tab_definition_function()
+assert(sprites >= 3, 'deck, stake and Multiplayer icons must be constructed')
+assert(list.nodes[3].config.minw == 6.3, 'games have distinct list rows')
+
 -- Hooks preserve the game's return values.
 local function pack(...) return {n = select('#', ...), ...} end
 local result = pack(Game:update(0.1))

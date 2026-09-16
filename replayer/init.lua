@@ -47,8 +47,15 @@ return function(mod, JSON)
         protect(session.start)
         guard().update()
     end
-    G.FUNCS.brpl_log_prev = function() session.log_page(-1) end
-    G.FUNCS.brpl_log_next = function() session.log_page(1) end
+    local function change_log_page(delta)
+        session.log_page(delta)
+        if G.FUNCS['openModUI_' .. mod.id] then
+            SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
+            G.FUNCS['openModUI_' .. mod.id]()
+        end
+    end
+    G.FUNCS.brpl_log_prev = function() change_log_page(-1) end
+    G.FUNCS.brpl_log_next = function() change_log_page(1) end
     G.FUNCS.brpl_mod_prev = function() session.mod_page(-1) end
     G.FUNCS.brpl_mod_next = function() session.mod_page(1) end
     G.FUNCS.brpl_end = function()
@@ -145,17 +152,56 @@ return function(mod, JSON)
             {n = G.UIT.T, config = {text = 'Remove clears the selection from the list only.', scale = 0.28, colour = G.C.WHITE}}}}
         return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
     end
+    local function text(value, scale, colour)
+        return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
+    end
+    local function icon(atlas, pos, w, h, fallback)
+        if Sprite and atlas then
+            local sprite = Sprite(0, 0, w, h, atlas, pos or {x = 0, y = 0})
+            sprite.states.drag.can, sprite.states.collide.can = false, false
+            return {n = G.UIT.O, config = {object = sprite}}
+        end
+        return text(fallback, 0.28)
+    end
     mod.extra_tabs = function()
         return {{label = 'Log Info', tab_definition_function = function()
             session.log_page()
-            local rows = {row('log_filename', 0.4), row('log_count', 0.34)}
+            local rows = {row('log_filename', 0.38), row('log_count', 0.3)}
+            local runs = session.log_runs or {}
             for slot = 1, 3 do
-                rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
-                    {n = G.UIT.C, config = {align = 'cm', padding = 0.06}, nodes = {
-                        row('log_game' .. slot, 0.36), row('log_setup' .. slot, 0.32)}}}}
+                local run = runs[(session.log_page_index - 1) * 3 + slot]
+                if run then
+                    local m = run.manifest
+                    local deck = (G.P_CENTERS or {})[m.deck]
+                    local stake = ((G.P_CENTER_POOLS or {}).Stake or {})[m.stake]
+                    local atlases = G.ASSET_ATLAS or {}
+                    local kind, multiplayer = session.game_type(m)
+                    local badge = {}
+                    if multiplayer then badge[#badge + 1] = icon(atlases.mp_modicon, {x = 0, y = 0}, 0.36, 0.36, 'MP') end
+                    badge[#badge + 1] = text(kind, 0.28)
+                    local names = session['log_game' .. slot]
+                    if not multiplayer then names = tostring(run.label_number) .. '. ' .. tostring(m.player or 'Unknown player'):sub(1, 30) end
+                    rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cl', padding = 0.1, r = 0.12,
+                        minw = 6.3, colour = G.C.BLACK or G.C.CLEAR}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', padding = 0.12}, nodes = {
+                            icon(deck and atlases[deck.atlas or 'centers'], deck and deck.pos, 0.55, 0.75, '?')}},
+                        {n = G.UIT.C, config = {align = 'cl', padding = 0.04}, nodes = {
+                            {n = G.UIT.R, config = {align = 'cl'}, nodes = {text(names, 0.36)}},
+                            {n = G.UIT.R, config = {align = 'cl', padding = 0.03}, nodes = badge},
+                            {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
+                                text(session.deck_name(m):sub(1, 23), 0.3),
+                                icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
+                                text('Stake ' .. tostring(m.stake), 0.3)}}}}
+                    }}
+                end
             end
-            rows[#rows + 1] = row('log_position', 0.32)
-            rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
+            if #runs == 0 then rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {text('Load a log to see its games.')}} end
+            if #runs > 3 then
+                rows[#rows + 1] = row('log_position', 0.3)
+                rows[#rows + 1] = buttons(button('Previous', 'brpl_log_prev'), button('Next', 'brpl_log_next'))
+            end
+            rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.1}, nodes = {
+                text('Only games recorded in the log are listed.', 0.25)}}
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
     end

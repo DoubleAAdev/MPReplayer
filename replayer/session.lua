@@ -164,6 +164,14 @@ return function(log, driver, JSON, deps)
         fallback = fallback:gsub('(%a)([%w]*)', function(first, rest) return first:upper() .. rest end)
         return fallback .. ' Deck'
     end
+    S.deck_name = deck_name
+    function S.game_type(m)
+        if m.practice == true or m.is_practice == true then return 'Practice (solo)', false end
+        if m.multiplayer == false or m.is_multiplayer == false then return 'Single-player', false end
+        if type(m.lobby_code) == 'string' and m.lobby_code ~= '' and m.lobby_code ~= 'nolobby' then return 'Multiplayer', true end
+        if m.multiplayer == true or m.is_multiplayer == true then return 'Multiplayer', true end
+        return 'Game type unknown', false
+    end
     function S.log_page(delta)
         local runs = S.log_runs or {}
         local pages = math.max(1, math.ceil(#runs / 3))
