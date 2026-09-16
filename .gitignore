@@ -72,3 +72,6 @@ __pycache__/
 
 # Local confirmation-popup QA captures
 /confirmation-qa/
+
+# Local branding QA output
+/branding-qa/

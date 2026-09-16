@@ -54,6 +54,7 @@ local function find_end(node)
     if node.config and node.config.button == 'brpl_end' then return node end
     for _, child in pairs(node.nodes or {}) do local found = find_end(child); if found then return found end end
 end
+assert(find_end(transformed).nodes[1].nodes[1].config.scale == 0.5, 'End Replay inherits native font size')
 assert(find_end(transformed).nodes[1].config.minw == 5, 'End Replay retains the original pause-button width')
 session.phase = 'idle'
 local restored = collect(guard.rewrite(create_UIBox_options()))

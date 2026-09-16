@@ -166,7 +166,7 @@ local box = {}
 assert(UIBox.init(box, {definition = menu()}) == 'box')
 assert(table.concat(buttons(box.definition), ',') == 'options,brpl_end')
 local end_node = box.definition.nodes[1].nodes[2].nodes[1]
-assert(end_node.nodes[1].nodes[1].config.text == 'End Replay' and end_node.config.func == nil)
+assert(end_node.nodes[1].config.text == 'End Replay' and end_node.config.func == nil)
 -- A screen containing only Leave Lobby still gets its exit.
 assert(table.concat(buttons(guard.rewrite(button('lobby_leave'))), ',') == 'brpl_end')
 -- Normal games get their exact controls back, with no stale held input.

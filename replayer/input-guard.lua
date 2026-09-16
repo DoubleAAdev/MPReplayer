@@ -167,9 +167,16 @@ return function(session)
                 if end_added then return nil end
                 end_added = true
                 config.button, config.func, config.id = 'brpl_end', nil, 'brpl_end'
-                local label = node.nodes and node.nodes[1] and node.nodes[1].config or {}
-                node.nodes = {{n = G.UIT.R, config = {align = 'cm', minw = label.minw or config.minw or 4, maxw = label.maxw}, nodes = {
-                    {n = G.UIT.T, config = {text = 'End Replay', scale = 0.4, colour = G.C.WHITE}}}}}
+                -- Keep the native button's label tree, font, shadow and dimensions.
+                local replaced = false
+                local function relabel(child)
+                    if child.n == G.UIT.T and child.config and child.config.text then
+                        child.config.text = replaced and '' or 'End Replay'
+                        replaced = true
+                    end
+                    for _, nested in pairs(child.nodes or {}) do relabel(nested) end
+                end
+                for _, child in pairs(node.nodes or {}) do relabel(child) end
                 return node
             end
             if node.nodes then

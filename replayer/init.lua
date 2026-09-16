@@ -13,6 +13,20 @@ return function(mod, JSON)
     })
     -- Install after all mods have registered their input hooks.
     local input_guard
+    local icon_hooked = false
+    local function install_icon_hook()
+        if icon_hooked or type(getModtagInfo) ~= 'function' then return end
+        icon_hooked = true
+        local original = getModtagInfo
+        getModtagInfo = function(info)
+            local atlas, pos, message, vars = original(info)
+            if info.id == mod.id and info.can_load and not info.disabled then
+                local boss = G.P_TAGS and G.P_TAGS.tag_boss
+                return boss and boss.atlas or 'tags', boss and boss.pos or {x = 0, y = 2}, message, vars
+            end
+            return atlas, pos, message, vars
+        end
+    end
     local menu_hooked = false
     local function install_menu_hook()
         if menu_hooked or type(create_UIBox_mods) ~= 'function' then return end
@@ -34,6 +48,7 @@ return function(mod, JSON)
     end
     local function guard()
         install_menu_hook()
+        install_icon_hook()
         if not input_guard then input_guard = load('input-guard.lua')(session) end
         return input_guard
     end
@@ -198,7 +213,7 @@ return function(mod, JSON)
             message('Mods differ', 0.55),
             message('Some mods may affect this replay.'),
             message('It may play differently or stop early.'),
-            buttons(button('Cancel', 'brpl_cancel_replay'), button('Continue', 'brpl_continue_replay', nil, G.C.GREEN)),
+            buttons(button('Cancel', 'brpl_cancel_replay', nil, G.C.RED), button('Continue', 'brpl_continue_replay', nil, G.C.GREEN)),
         }}}
         -- Escape closes the popup without starting; a fresh Start always asks again.
     end

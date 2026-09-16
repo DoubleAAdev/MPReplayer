@@ -6,7 +6,7 @@ local writes = {}
 love = {timer = {getTime = function() return 0 end}, thread = {getChannel = function() return {push = function() end} end},
     system = {getOS = function() return 'Windows' end},
     filesystem = {createDirectory = function() return true end, write = function(p, t) writes[p] = t; return true end}}
-G = {STAGE = 1, STAGES = {MAIN_MENU = 1, RUN = 2}, STATES = {}, FUNCS = {}, UIT = {ROOT = 'ROOT', R = 'R', C = 'C', T = 'T'}, C = {WHITE = {}, BLUE = {}, CLEAR = {}}, SETTINGS = {}}
+G = {STAGE = 1, STAGES = {MAIN_MENU = 1, RUN = 2}, STATES = {}, FUNCS = {}, UIT = {ROOT = 'ROOT', R = 'R', C = 'C', T = 'T'}, C = {WHITE = {}, BLUE = {}, RED = {}, CLEAR = {}}, SETTINGS = {}}
 Game = {update = function() return nil, 42 end, start_run = function() return 7 end, main_menu = function() return 'menu' end}
 local manifest = {seed = 'TEST', deck = 'b_red', ruleset = 'r', gamemode = 'g', stake = 1}
 package.loaded.json = {decode = function() return manifest end, encode = function() return '{}' end}
@@ -19,7 +19,7 @@ end}
 local text = ':: MULTIPLAYER :: MP_RLOG: MANIFEST {}\n:: MULTIPLAYER :: MP_RLOG: 1 reroll\n:: MULTIPLAYER :: Client sent message: action:rerollShop,cost:5\n'
 NFS = {getInfo = function() return {type = 'file', size = #text} end, read = function(path) assert(path == 'picked.log'); return text end}
 function UIBox_button(args)
-    return {n = G.UIT.C, config = {button = args.button, minw = args.minw, minh = args.minh}, nodes = {
+    return {n = G.UIT.C, config = {button = args.button, minw = args.minw, minh = args.minh, colour = args.colour}, nodes = {
         {n = G.UIT.T, config = {text = args.label[1], scale = args.scale}}}}
 end
 function create_UIBox_generic_options(args) return args end
@@ -39,7 +39,12 @@ function create_UIBox_mods()
     end
     return 'native_menu'
 end
+function getModtagInfo(info) return 'original', {x = 1, y = 1}, 'message', {} end
 Game:update(0)
+local atlas, pos, message = getModtagInfo({id = mod.id, can_load = true})
+assert(atlas == 'tags' and pos.x == 0 and pos.y == 2 and message == 'message')
+assert(getModtagInfo({id = 'OtherMod', can_load = true}) == 'original')
+assert(getModtagInfo({id = mod.id, can_load = false}) == 'original')
 G.ACTIVE_MOD_UI = mod
 SMODS.LAST_SELECTED_MOD_TAB = 'config'
 assert(create_UIBox_mods() == 'native_menu')
@@ -178,6 +183,7 @@ G.FUNCS.brpl_start_listed({config = {ref_table = selected}})
 assert(session.phase == 'idle' and G.OVERLAY_MENU.no_back)
 local controls = G.OVERLAY_MENU.contents[4]
 assert(controls.nodes[1].config.button == 'brpl_cancel_replay')
+assert(controls.nodes[1].config.colour == G.C.RED)
 assert(controls.nodes[3].config.button == 'brpl_continue_replay')
 G.FUNCS.brpl_cancel_replay()
 assert(session.phase == 'idle' and not session.confirmed)

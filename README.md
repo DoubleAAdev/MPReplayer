@@ -1,4 +1,4 @@
-# Balatro Replayer
+# MP Replayer
 
 A Steamodded mod that replays a Multiplayer game from its Lovely log, action by action. With [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver) installed, its Action Recorder records the replay with card identities.
 
@@ -19,7 +19,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 
 ## Use
 
-1. Open **Mods > Balatro Replayer > Replays**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
+1. Open **Mods > MP Replayer > Replays**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before MP Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
 **Replays** is the replay-management tab. It shows the source filename and all playable games in that log, with players, deck, and stake. Previous/Next pages cover longer logs; removing a replay list entry does not change this source inventory.
 
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
