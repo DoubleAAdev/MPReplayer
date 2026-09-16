@@ -109,6 +109,39 @@ love.keypressed('a'); assert(controller.pressed_keys.a)
 controller:key_press_update('a'); assert(count('key_a') == 1)
 controller.text_input_hook = nil
 love.wheelmoved(0, 1); assert(count('shortcut_wheelmoved') == 1)
+-- Steamodded's scroll content has multiple embedded UIBoxes between gears
+-- and the overlay. Config controls must work even after a replay failure.
+local nested_box = {parent = {UIBox = {parent = {UIBox = G.OVERLAY_MENU}}}}
+local nested_setting = {UIBox = nested_box, config = {button = 'mod_setting_toggle'}}
+G.FUNCS.openModUI_TestMod = function() return hit('open_mod') end
+local gear = {UIBox = nested_box, config = {button = 'openModUI_TestMod'}}
+for _, phase in ipairs({'running', 'failed', 'finished'}) do
+    session.phase = phase
+    assert(UIElement.click(gear) == 'open_mod')
+    assert(UIElement.click(nested_setting) == 'mod_setting_toggle')
+    controller.hovering.target, controller.cursor_hover.target = gear, gear
+    local before = count('press')
+    controller:L_cursor_press(); assert(count('press') == before + 1)
+    controller.focused.target = {UIBox = nested_box, config = {focus_args = {type = 'slider'}}}
+    assert(controller:capture_focused_input('dpright', 'press', 0.1))
+    controller.text_input_hook = {UIBox = nested_box}
+    love.keypressed('b'); assert(controller.pressed_keys.b)
+    controller:key_press_update('b')
+end
+controller.text_input_hook = nil
+local attached = {role = {major = nested_box}, config = {button = 'openModUI_TestMod'}}
+assert(UIElement.click(attached) == 'open_mod')
+local loop = {}; loop.parent = loop
+assert(UIElement.click({UIBox = loop, config = {button = 'openModUI_TestMod'}}) == nil)
+nested_box.under_overlay = true
+assert(UIElement.click(gear) == nil, 'covered nested menus remain blocked')
+nested_box.under_overlay = nil
+for _, name in ipairs(gameplay) do
+    UIElement.click({UIBox = nested_box, config = {button = name}})
+    assert(count(name) == 0, 'nested panels cannot unlock gameplay')
+end
+-- Restore the earlier baseline for the detached/closed menu checks below.
+counts.mod_setting_toggle = 1
 -- An open menu must not unlock background actions or gameplay callbacks.
 for _, name in ipairs(gameplay) do
     UIElement.click({UIBox = G.OVERLAY_MENU, config = {button = name}})

@@ -12,6 +12,7 @@ return function(mod, JSON)
         encode = json.encode,
     })
     -- Install after all mods have registered their input hooks.
+    local cocktail = load('cocktail.lua')()
     local end_screen
     local input_guard
     local icon_hooked = false
@@ -48,6 +49,7 @@ return function(mod, JSON)
         end
     end
     local function guard()
+        cocktail.install()
         install_menu_hook()
         install_icon_hook()
         if end_screen then end_screen.install() end

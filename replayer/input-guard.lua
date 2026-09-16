@@ -30,7 +30,18 @@ return function(session)
         lobby_choose_deck = true, mprpl_start_listed = true, mprpl_start = true, mprpl_load = true, mprpl_next = true,
     }
     local function in_overlay(node)
-        return G.OVERLAY_MENU ~= nil and node and node.UIBox == G.OVERLAY_MENU and not node.under_overlay
+        if not G.OVERLAY_MENU or not node or node.under_overlay then return false end
+        -- Steamodded's scrolling mod list and config widgets own nested UIBoxes.
+        -- Follow ownership back to the current overlay, not just its first box.
+        local seen = {}
+        local function belongs(owner)
+            if type(owner) ~= 'table' or seen[owner] or owner.under_overlay then return false end
+            if owner == G.OVERLAY_MENU then return true end
+            seen[owner] = true
+            return belongs(owner.UIBox) or belongs(owner.parent)
+                or belongs(owner.role and owner.role.major)
+        end
+        return belongs(node)
     end
     local function editing_text(controller)
         return controller and in_overlay(controller.text_input_hook)
