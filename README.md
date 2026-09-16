@@ -81,3 +81,5 @@ Load Log replaces the current list with games from the selected log. Only one lo
 Critical or unknown mod differences now open a Cancel / Continue popup instead of requiring a second press. Cancel leaves the replay stopped; Continue rechecks compatibility before starting.
 
 The installer preserves earlier installations outside the Mods folder and migrates replay diagnostics to `mp_replayer`. Older recorded mod IDs remain supported.
+
+When playback finishes, **Replay Ended** shows the recorded result and game setup. Choose **Restart Replay**, **Replays**, or **Main Menu**. Partial logs and unrecorded outcomes are labeled explicitly.

@@ -698,6 +698,18 @@ return function(log, driver, JSON, deps)
         end
     end
 
+    -- Keep the exact run available until the exit transition has cleaned up.
+    function S.active_run() return session and session.run end
+
+    function S.end_screen_reached()
+        if not session or S.phase ~= 'running' then return end
+        if session.entries[session.cursor] then
+            fail('the game ended before all recorded actions were played')
+        else
+            finish()
+        end
+    end
+
     function S.current()
         return session and session.entries[session.cursor] or nil
     end

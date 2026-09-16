@@ -5,7 +5,7 @@ return function(session)
     local function active() return session.phase ~= 'idle' end
     M.active = active
     local safe_buttons = {
-        options = true, exit_overlay_menu = true, mprpl_end = true,
+        options = true, exit_overlay_menu = true, mprpl_end = true, mprpl_restart = true, mprpl_replays = true, mprpl_main_menu = true,
         run_info = true, deck_info = true, change_tab = true, lobby_info = true,
         saturn_config = true, settings = true, mods_button = true,
         high_scores = true, your_collection = true, customize_deck = true,

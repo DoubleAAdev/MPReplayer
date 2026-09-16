@@ -78,3 +78,6 @@ __pycache__/
 
 # Local rename migration verification
 /rename-qa/
+
+# Local replay-summary visual checks
+/end-screen-qa/

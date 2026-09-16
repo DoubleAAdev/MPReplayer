@@ -12,6 +12,7 @@ return function(mod, JSON)
         encode = json.encode,
     })
     -- Install after all mods have registered their input hooks.
+    local end_screen
     local input_guard
     local icon_hooked = false
     local function install_icon_hook()
@@ -49,6 +50,7 @@ return function(mod, JSON)
     local function guard()
         install_menu_hook()
         install_icon_hook()
+        if end_screen then end_screen.install() end
         if not input_guard then input_guard = load('input-guard.lua')(session) end
         return input_guard
     end
@@ -172,6 +174,7 @@ return function(mod, JSON)
         guard().update()
         local result = pack(previous_update(self, dt))
         protect(function() session.update(dt) end, true)
+        protect(function() end_screen.update() end, true)
         return unpack(result, 1, result.n)
     end
     local previous_start = Game.start_run
@@ -296,5 +299,6 @@ return function(mod, JSON)
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
     end
+    end_screen = load('end-screen.lua')(session, show_replays, after_start)
     return session
 end

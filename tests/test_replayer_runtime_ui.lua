@@ -60,3 +60,22 @@ session.phase = 'idle'
 local restored = collect(guard.rewrite(create_UIBox_options()))
 assert(restored.lobby_leave == 1 and restored.mp_return_to_lobby == 1 and not restored.mprpl_end)
 print('PASS: installed Multiplayer pause definition has one full-width End Replay and restores both normal lobby controls')
+
+-- Build the new screen with Balatro's actual UI constructors, then exercise
+-- its buttons through the installed input guard.
+G.C.GREEN, G.C.GOLD, G.C.CLEAR = {}, {}, {}
+local run = {manifest = {seed = 'TEST', deck = 'b_red', stake = 1, player = 'Me', opponent = 'Them'},
+    result = 'win', complete = true, actions = 5}
+session.active_run = function() return run end
+session.deck_center = function() return nil end
+session.deck_name = function() return 'Red Deck' end
+session.stake_name = function() return 'White Stake' end
+local screen = dofile('replayer/end-screen.lua')(session, function() end, function() end)
+session.phase = 'finished'
+local definition = screen.definition(run)
+local controls = collect(definition)
+assert(controls.mprpl_restart == 1 and controls.mprpl_replays == 1 and controls.mprpl_main_menu == 1)
+assert(not controls.lobby_leave and not controls.mp_return_to_lobby)
+G.OVERLAY_MENU = {}
+check_clicks(definition)
+print('PASS: native UI constructors build all three replay-summary buttons and replay input guard allows them')

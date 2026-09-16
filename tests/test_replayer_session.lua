@@ -525,3 +525,18 @@ now=now+1;session.update(.1)
 assert(session.phase=='finished',session.text)
 session.on_main_menu()
 print('PASS: exhausted PvP hand releases opponent result after scoring and effects without resending input or network traffic')
+
+-- Native end-screen creation can happen before the next replay update.
+assert(session.active_run() == nil)
+begin()
+assert(session.active_run() == session.runs[1])
+session.end_screen_reached()
+assert(session.phase == 'failed' and session.text:find('before all recorded actions', 1, true))
+session.on_main_menu()
+assert(session.active_run() == nil and Client.send == original_send)
+session.runs[1].entries = {}
+begin()
+session.end_screen_reached()
+assert(session.phase == 'finished')
+session.on_main_menu()
+print('PASS: native completion retains the exact replay and early game-over cannot report successful playback')
