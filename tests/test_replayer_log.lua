@@ -160,6 +160,7 @@ assert(#rolled.idols == 1 and rolled.idols[1].payload == 'eyJyb2xsIjowLjV9' and 
     'only rolls inside the run count')
 local restarted = log.parse(head .. 'MP_RLOG: 1 set_ante_key 0.5' .. NL .. idol_line .. idol_line .. P .. 'MP_RLOG: 2 reroll' .. NL .. idol_line .. P .. 'MP_RLOG: 3 reroll')[1]
 assert(#restarted.idols == 1 and restarted.idols[1].line == 6, 'rolls from starting the game are not round ends')
+assert(restarted.entries[1].idols_before == 0 and restarted.entries[2].idols_before == 1, 'each action knows the round ends logged before it')
 -- An action after the player reached the shop is marked as after the cash out.
 local shop_line = P .. 'Client sent message: {"location":"loc_shop-bl_big","action":"setLocation"}' .. NL
 local cashed = log.parse(head .. 'MP_RLOG: 1 reroll' .. NL .. shop_line .. P .. 'MP_RLOG: 2 use 1' .. NL .. P .. 'MP_RLOG: 3 use 1')[1].entries

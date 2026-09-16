@@ -649,6 +649,54 @@ session.runs[1].idols = nil
 love.data = nil
 print('PASS: a deck that leaves the log stops the replay at that round')
 
+-- A joker drag logged right after a round end is done while the game is
+-- still busy, before an eaten Pizza leaves: only once the replay's own round
+-- end has passed and the jokers have held the logged count for an update.
+local joker_drags = 0
+love.data = {decode = function(_, _, text) return text end}
+session.runs[1].entries = {
+ {kind='action',op='reroll',args={},text='reroll',seq=1,line=10},
+ {kind='action',op='reorder',args={'4','1.2.3.5.6.4.7'},text='reorder 4 1.2.3.5.6.4.7',seq=94,line=3643,idols_before=1},
+}
+session.runs[1].idols = {{payload='A', line=3639}}
+session.runs[1].actions = 2
+driver.perform = function(entry)
+ if #G.jokers.cards ~= 7 then return 'wait', 'jokers hold ' .. #G.jokers.cards end
+ joker_drags = joker_drags + 1
+ MP.RLOG.record('reorder', {4, {1,2,3,5,6,4,7}})
+ return 'done'
+end
+begin()
+MP.RLOG.record('reroll', nil)
+G.jokers = {cards = {1,2,3,4,5,6,7}}
+G.E_MANAGER.queues.base = {{blocking=true, complete=false}}
+for i=1,3 do now=now+1;session.update(.1) end
+assert(joker_drags == 0, 'not before the round end the log shows first')
+sendDebugMessage('IDOL_ROLL::A', 'IdolAlgo')
+now=now+1;session.update(.1)
+assert(joker_drags == 1, 'the drag is done while the game is still busy')
+now=now+1;session.update(.1)
+assert(session.phase == 'finished', session.text)
+session.on_main_menu()
+-- A count that has just changed waits an update, so Multiplayer sees the drag.
+joker_drags = 0
+begin()
+MP.RLOG.record('reroll', nil)
+G.jokers = {cards = {1,2,3,4,5,6}}
+sendDebugMessage('IDOL_ROLL::A', 'IdolAlgo')
+now=now+1;session.update(.1)
+G.jokers = {cards = {1,2,3,4,5,6,7}}
+now=now+1;session.update(.1)
+assert(joker_drags == 0, 'the count changed this update')
+now=now+1;session.update(.1)
+assert(joker_drags == 1, session.text)
+session.on_main_menu()
+G.E_MANAGER.queues.base = {}
+G.jokers = nil
+session.runs[1].idols = nil
+love.data = nil
+print('PASS: a joker drag after a round end is done while the game resolves, once the round and joker count match')
+
 -- Native end-screen creation can happen before the next replay update.
 assert(session.active_run() == nil)
 begin()

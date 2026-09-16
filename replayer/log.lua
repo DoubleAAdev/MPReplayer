@@ -170,7 +170,7 @@ return function(decode)
                         run.actions = run.actions + 1
                         pending = {kind = 'action', seq = tonumber(seq), op = op, args = tokens, money = {},
                             text = op .. (#tokens > 0 and (' ' .. table.concat(tokens, ' ')) or ''), line = number,
-                            position = #run.entries + 1, after_cash_out = shopped}
+                            position = #run.entries + 1, after_cash_out = shopped, idols_before = #run.idols}
                         run.entries[#run.entries + 1] = pending
                         shopped = nil
                         paying = pending

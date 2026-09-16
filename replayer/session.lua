@@ -750,6 +750,25 @@ return function(log, driver, JSON, deps)
             return
         end
         if entry.auto then return waiting('the game to produce "' .. entry.text .. '"') end
+        -- Jokers can be dragged while the game is still resolving, and it may
+        -- remove one right after (a Pizza eaten on the round results). Once the
+        -- replay has reached the log's round end and the jokers have held the
+        -- logged count for an update, the drag is done without settling.
+        if entry.op == 'reorder' and entry.args[1] == '4' then
+            local count = #((G.jokers or {}).cards or {})
+            if session.joker_count ~= count then session.joker_count, session.joker_since = count, now end
+            if count == #log.indices(entry.args[2]) and now > session.joker_since
+                and (session.idol or 0) >= (entry.idols_before or 0) then
+                local cursor = session.cursor
+                local ok, result = pcall(driver.perform, entry, session.entries)
+                if not ok then return fail(result) end
+                if result == 'done' then
+                    if session.cursor == cursor and not session.failure then session.issued = now end
+                    session.waiting_since = nil
+                    return
+                end
+            end
+        end
         local reason = busy()
         if reason then return waiting(reason) end
         local signature = driver.signature()
