@@ -44,6 +44,11 @@ return function(log, driver, JSON, deps)
                 if entry.dollars then trail[#trail + 1] = tostring(entry.seq) .. ' ' .. entry.text .. ' $' .. entry.dollars end
             end
             state.dollars = table.concat(trail, '; ')
+            local hands = {}
+            for _, entry in ipairs(session.entries) do
+                if entry.hand then hands[#hands + 1] = tostring(entry.seq) .. ' ' .. entry.text .. ' | ' .. entry.hand end
+            end
+            state.hands = table.concat(hands, '; ')
         end
         pcall(function()
             love.filesystem.createDirectory(directory)
@@ -93,6 +98,48 @@ return function(log, driver, JSON, deps)
         S.status('Replay stopped' .. where .. ': ' .. clean(message) .. ' - ' .. progress() .. ' actions done, the run is left open')
     end
     S.fail = fail
+
+    -- The hand as the replay sees it before an input: rank, suit and any
+    -- enhancement or seal, left to right.
+    local function hand_text()
+        local cards = G.hand and G.hand.cards
+        if not cards or #cards == 0 then return nil end
+        local out = {}
+        for i, card in ipairs(cards) do
+            if type(card) ~= 'table' then return nil end
+            local base = card.base or {}
+            local key = ((card.config or {}).center or {}).key
+            out[i] = tostring(base.value) .. tostring(base.suit):sub(1, 1)
+                .. (key and key ~= 'c_base' and ('/' .. key:gsub('^m_', '')) or '') .. (card.seal and ('/' .. card.seal) or '')
+        end
+        return table.concat(out, ' ')
+    end
+
+    -- Multiplayer prints each round's deck counts as IDOL_ROLL. A replay whose
+    -- deck no longer matches the log's stops at that round, not rounds later.
+    local function idol_counts(payload)
+        local ok, text = pcall(function() return love.data.decode('string', 'base64', payload) end)
+        local counts = {}
+        for token in (ok and text or ''):gmatch('"(%w%w%d+)"') do counts[token:sub(1, 2)] = token:sub(3) end
+        return counts
+    end
+    local function check_idol(message)
+        local payload = session and (S.phase == 'running' or S.phase == 'starting') and tostring(message):match('^IDOL_ROLL::(%S+)')
+        if not payload then return end
+        session.idol = (session.idol or 0) + 1
+        local expected = (session.run.idols or {})[session.idol]
+        if not expected or expected.payload == payload then return end
+        local logged, played, diff = idol_counts(expected.payload), idol_counts(payload), {}
+        for card, count in pairs(logged) do
+            if played[card] ~= count then diff[#diff + 1] = card .. ' log ' .. count .. ' replay ' .. (played[card] or 0) end
+        end
+        for card, count in pairs(played) do
+            if not logged[card] then diff[#diff + 1] = card .. ' log 0 replay ' .. count end
+        end
+        table.sort(diff)
+        fail('the deck differs from the log at the round end near log line ' .. expected.line
+            .. (#diff > 0 and (': ' .. table.concat(diff, ', ')) or ''))
+    end
 
     -- Multiplayer's positional argument formatting, token for token.
     local function format_args(args)
@@ -512,6 +559,7 @@ return function(log, driver, JSON, deps)
         saved.console = sendMessageToConsole
         if saved.console then
             sendMessageToConsole = function(level, logger, message)
+                if logger == 'IdolAlgo' then pcall(check_idol, message) end
                 if logger ~= 'MULTIPLAYER' then return saved.console(level, logger, message) end
             end
         end
@@ -697,6 +745,7 @@ return function(log, driver, JSON, deps)
                 if next_entry and next_entry.op == 'reorder' and not session.issued
                     and session.hand_pending.op == 'play' and state == 'HAND_PLAYED' then
                     local cursor = session.cursor
+                    next_entry.hand = hand_text()
                     local ok, result = pcall(driver.perform, next_entry, session.entries)
                     if ok and result == 'done' and session.cursor == cursor and not session.failure then session.issued = now end
                 end
@@ -741,6 +790,7 @@ return function(log, driver, JSON, deps)
         -- Most callbacks write their MP_RLOG line before returning, so the
         -- cursor may already have moved on by the time perform comes back.
         local cursor = session.cursor
+        entry.hand = hand_text()
         local ok, result, detail = pcall(driver.perform, entry, session.entries)
         if not ok then return fail(result) end
         if result == 'done' then

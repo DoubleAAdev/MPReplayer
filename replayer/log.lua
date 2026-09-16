@@ -144,7 +144,7 @@ return function(decode)
             local payload = line:match('^MP_RLOG: (.*)$') or line:match(':: MULTIPLAYER :: MP_RLOG: (.*)$')
             if payload then
                 if payload:match('^MANIFEST ') then
-                    run = {manifest = parse_manifest(payload:sub(10)), manifest_text = payload:sub(10), entries = {}, actions = 0, seq = 0,
+                    run = {manifest = parse_manifest(payload:sub(10)), manifest_text = payload:sub(10), entries = {}, idols = {}, actions = 0, seq = 0,
                         complete = false, lobby = lobby, line = number}
                     run.replayed = replaying ~= nil and replaying == run.manifest.seed or nil
                     replaying = nil
@@ -179,7 +179,12 @@ return function(decode)
             else
                 local human = line:match(':: MULTIPLAYER :: Client sent message: action:(.*)$')
                 local started = not human and line:match(':: BalatroObserver :: Replay starting run (%S+)')
-                if started then
+                local idol = not human and line:match(':: IdolAlgo :: IDOL_ROLL::(%S+)')
+                if idol then
+                    -- The deck's rank and suit counts at each round's end: the
+                    -- replay's own roll must print the same text.
+                    if run then run.idols[#run.idols + 1] = {payload = idol, line = number} end
+                elseif started then
                     replaying = started
                 elseif line:find(':: MULTIPLAYER :: Client sent message: {"location":"loc_shop', 1, true) then
                     shopped = true

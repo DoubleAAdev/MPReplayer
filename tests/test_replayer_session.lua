@@ -587,7 +587,31 @@ assert(drag_calls==1 and session.phase=='finished',session.text)
 session.on_main_menu()
 driver.state_name=function() return 'HAND_PLAYED' end
 print('PASS: a reorder after a discard waits for the redraw')
+
 assert(writes['mp_replayer/status.json']:find('"dollars":"128 discard 1.5.6.7.10 $nil; 129 reorder',1,true),'status.json lists money after each action')
+
+-- The replay's Idol deck counts must match the log's round by round; the
+-- first round that differs stops the replay and names the cards.
+local decoded = {A = '{"roll":0.5,"winner":"KC","cards":["KC6","KS2","9H2"]}', B = '{"roll":0.5,"winner":"KC","cards":["KC5","KS1","2S1"]}'}
+love.data = {decode = function(_, _, text) return decoded[text] end}
+session.runs[1].entries = {
+ {kind='action',op='reroll',args={},text='reroll',seq=1,line=10},
+ {kind='action',op='reroll',args={},text='reroll',seq=2,line=20},
+}
+session.runs[1].idols = {{payload='A', line=12}, {payload='A', line=22}}
+session.runs[1].actions = 2
+driver.perform = function() return 'wait', 'held' end
+begin()
+sendDebugMessage('IDOL_ROLL::A', 'IdolAlgo')
+assert(session.phase == 'running', 'a matching round passes')
+sendDebugMessage('IDOL_ROLL::B', 'IdolAlgo')
+assert(session.phase == 'failed' and session.text:find('deck differs from the log at the round end near log line 22', 1, true)
+    and session.text:find('KC log 6 replay 5', 1, true) and session.text:find('2S log 0 replay 1', 1, true), session.text)
+assert(lovely[#lovely] == 'IdolAlgo: IDOL_ROLL::B', 'the roll still reaches the Lovely log')
+session.on_main_menu()
+session.runs[1].idols = nil
+love.data = nil
+print('PASS: a deck that leaves the log stops the replay at that round')
 
 -- Native end-screen creation can happen before the next replay update.
 assert(session.active_run() == nil)

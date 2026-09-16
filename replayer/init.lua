@@ -187,16 +187,18 @@ return function(mod, JSON)
     end
 
     local function pack(...) return {n = select('#', ...), ...} end
-    -- Fast forward: a button above the deck doubles the speed up to 512x,
-    -- then returns to 1x. Balatro starts at most one blocking event per
+    -- Fast forward: arrows above the deck halve or double the speed between
+    -- 1x and 512x. Balatro starts at most one blocking event per
     -- update, so speed comes from more updates per frame, not a bigger dt.
     local speed = {value = 1, label = '1x'}
     local speed_box, speed_deck
     local update_cost = 0.001
-    G.FUNCS.mprpl_speed = function()
-        speed.value = speed.value >= 512 and 1 or speed.value * 2
+    local function set_speed(value)
+        speed.value = math.max(1, math.min(512, value))
         speed.label = speed.value .. 'x'
     end
+    G.FUNCS.mprpl_speed_down = function() set_speed(speed.value / 2) end
+    G.FUNCS.mprpl_speed_up = function() set_speed(speed.value * 2) end
     local function sync_speed_button()
         local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
         if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED) then
@@ -204,14 +206,20 @@ return function(mod, JSON)
             speed_box, speed_deck = nil, nil
         end
         if not show then
-            speed.value, speed.label = 1, '1x'
+            set_speed(1)
         elseif not speed_box then
             speed_deck = G.deck
-            speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
-                {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed', colour = G.C.ORANGE, r = 0.1,
-                    minw = 1.4, minh = 0.6, padding = 0.05, hover = true, shadow = true}, nodes = {
-                    {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.45, colour = G.C.WHITE, shadow = true}}}}}},
-                config = {align = 'tm', offset = {x = 0, y = -0.1}, major = G.deck, bond = 'Weak'}}
+            local function arrow(text, callback)
+                return {n = G.UIT.C, config = {align = 'cm', button = callback, colour = G.C.ORANGE, r = 0.1,
+                    minw = 0.6, minh = 0.6, hover = true, shadow = true}, nodes = {
+                    {n = G.UIT.T, config = {text = text, scale = 0.45, colour = G.C.WHITE, shadow = true}}}}
+            end
+            speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.05}, nodes = {
+                arrow('<', 'mprpl_speed_down'),
+                {n = G.UIT.C, config = {align = 'cm', colour = G.C.BLACK, r = 0.1, minw = 1.3, minh = 0.6}, nodes = {
+                    {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.45, colour = G.C.WHITE, shadow = true}}}},
+                arrow('>', 'mprpl_speed_up')}},
+                config = {align = 'tm', offset = {x = 0, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
 

@@ -153,6 +153,11 @@ assert(not pcall(log.parse, head .. 'MP_RLOG: 1 set_ante_key 0.5'), 'a run of no
 local slow = 'INFO - [G] LONG DT @ 12: 0.07' .. NL
 local timed = log.parse(slow .. head .. 'MP_RLOG: 1 reroll' .. NL .. slow .. P .. 'MP_RLOG: 2 reroll')
 assert(#timed == 1 and timed[1].actions == 2)
+-- Each round's Idol deck counts are kept, in order, for the replay to match.
+local idol_line = 'INFO - [G] 2026-09-09 18:12:21 :: DEBUG :: IdolAlgo :: IDOL_ROLL::eyJyb2xsIjowLjV9' .. NL
+local rolled = log.parse(idol_line .. head .. 'MP_RLOG: 1 reroll' .. NL .. idol_line .. P .. 'MP_RLOG: 2 reroll')[1]
+assert(#rolled.idols == 1 and rolled.idols[1].payload == 'eyJyb2xsIjowLjV9' and rolled.idols[1].line == 4,
+    'only rolls inside the run count')
 -- An action after the player reached the shop is marked as after the cash out.
 local shop_line = P .. 'Client sent message: {"location":"loc_shop-bl_big","action":"setLocation"}' .. NL
 local cashed = log.parse(head .. 'MP_RLOG: 1 reroll' .. NL .. shop_line .. P .. 'MP_RLOG: 2 use 1' .. NL .. P .. 'MP_RLOG: 3 use 1')[1].entries

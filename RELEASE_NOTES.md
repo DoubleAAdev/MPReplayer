@@ -1,7 +1,8 @@
-# MP Replayer 2.9.12
+# MP Replayer 2.9.13
 
-- Fix free shop consumables (such as Astronomer planets) always being kept: like paid ones, a later use of their slot now decides between Buy and Buy & Use. A kept Planet X filled the rack, so a later Hermit had no room.
-- Add a fast-forward button above the deck during replays: 1x, 2x, 4x ... 512x, then back to 1x. It runs more game updates per frame, and replay timers follow game time.
+- Stop at the first round whose deck differs from the log: each round's IDOL_ROLL deck counts must match the logged ones, and the failure names the differing cards and log line.
+- Record the hand before every replayed action in mp_replayer/status.json ("hands") for diagnosing drift.
+- Replace the fast-forward button with arrows that halve or double the speed between 1x and 512x, placed higher above the deck.
 
 Validation: ten Lua suites. Restart Balatro to load the update.
 
