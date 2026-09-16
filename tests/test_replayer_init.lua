@@ -28,31 +28,28 @@ local mod = {id = 'BalatroReplayer'}
 local session = dofile('replayer/init.lua')(mod, JSON)
 assert(BalatroReplayer == session and session.phase == 'idle')
 
--- Larger native controls, identity fields and separate mod details.
-local tab = mod.config_tab()
-assert(tab.n == G.UIT.ROOT and #tab.nodes == 12)
-assert(tab.nodes[1].nodes[1].config.ref_value == 'replay_title')
-assert(tab.nodes[1].nodes[1].config.scale >= 0.4)
-local buttons = {}
-local function scan(node)
-    if node.config and node.config.button then
-        buttons[node.config.button] = true
-        assert(node.config.minh >= 0.65)
-        assert(node.nodes[1].config.scale >= 0.4)
-    end
-    for _, child in ipairs(node.nodes or {}) do scan(child) end
+-- One Replays tab replaces Config, with the two primary controls above the list.
+assert(mod.config_tab == nil)
+local tab = mod.extra_tabs()[1].tab_definition_function()
+assert(mod.extra_tabs()[1].label == 'Replays')
+assert(tab.nodes[1].nodes[1].config.button == 'brpl_load')
+assert(tab.nodes[1].nodes[3].config.button == 'brpl_details')
+assert(tab.nodes[1].nodes[3].nodes[1].config.text == 'Compare Mods')
+local opened = 0
+G.FUNCS.openModUI_BalatroReplayer = function()
+    opened = opened + 1
+    assert(SMODS.LAST_SELECTED_MOD_TAB == 'BalatroReplayer_1')
+    G.OVERLAY_MENU = mod.extra_tabs()[1].tab_definition_function()
 end
-scan(tab)
-for _, name in ipairs({'brpl_load','brpl_next','brpl_start','brpl_remove','brpl_details'}) do assert(buttons[name] and G.FUNCS[name]) end
-assert(not buttons.brpl_end and not buttons.brpl_mod_next)
 G.FUNCS.brpl_details()
 assert(G.OVERLAY_MENU.back_func == 'brpl_details_back')
 G.FUNCS.brpl_details_back()
-assert(G.OVERLAY_MENU.back_func == 'openModUI_BalatroReplayer')
+assert(opened == 1)
 G.OVERLAY_MENU = nil
 
 -- Loading through the picker, cancelling, and dropping a file.
 G.FUNCS.brpl_load()
+assert(opened == 2, 'loading a log rebuilds the Replays list immediately')
 assert(session.runs and #session.runs == 1 and session.runs[1].actions == 1, session.text)
 chosen = nil
 local loaded = session.runs
@@ -98,7 +95,7 @@ session.stop = old_stop
 
 -- A native third tab describes the source log, including removed entries.
 local tabs = mod.extra_tabs()
-assert(#tabs == 1 and tabs[1].label == 'Log Info')
+assert(#tabs == 1 and tabs[1].label == 'Replays')
 assert(tabs[1].tab_definition_function().n == G.UIT.ROOT)
 session.load(text .. text .. text .. text, 'C:/logs/match.log')
 assert(session.log_filename == 'match.log' and session.log_count == '4 games in this log')
@@ -132,8 +129,8 @@ session.log_runs[1].manifest.lobby_code = 'ABC'
 local list = mod.extra_tabs()[1].tab_definition_function()
 assert(sprites >= 2 and not sprite_atlases[G.ASSET_ATLAS.mp_modicon], 'only deck and stake icons are shown')
 assert(sprite_sizes[1][1] == 0.78 and sprite_sizes[1][2] == 1.06)
-assert(#list.nodes[3].nodes[3].nodes == 2, 'name and stake occupy two aligned rows')
-assert(list.nodes[3].config.minw == 8.2, 'games have distinct list rows')
+assert(#list.nodes[4].nodes[3].nodes == 2, 'name and stake occupy two aligned rows')
+assert(list.nodes[4].config.minw == 8.2, 'games have distinct list rows')
 
 -- Direct starts select exact objects across pages/removals and retain confirmation.
 assert(session.stake_name(1) == 'White Stake' and session.stake_name(8) == 'Gold Stake')

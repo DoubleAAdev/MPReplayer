@@ -19,11 +19,11 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 
 ## Use
 
-1. Open **Mods > Balatro Replayer > Config**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
-**Log Info** is the third mod-menu tab. It shows the source filename and all playable games in that log, with players, deck, and stake. Previous/Next pages cover longer logs; removing a replay list entry does not change this source inventory.
+1. Open **Mods > Balatro Replayer > Replays**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time, labeled by replay number, players, deck, stake, seed, and completion status; **Next Replay** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
+**Replays** is the replay-management tab. It shows the source filename and all playable games in that log, with players, deck, and stake. Previous/Next pages cover longer logs; removing a replay list entry does not change this source inventory.
 
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
-3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the config tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
+3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the Replays tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
 4. When the status says the replay is complete, choose **End Replay** from the pause menu. If Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
 5. Ending the replay returns to the main menu, dismantles the lobby copy, restores player controls, and leaves Multiplayer as it was.
 
@@ -56,12 +56,12 @@ The replay stops at the action it could not execute and says why, leaving the ru
 
 ## The Lovely log
 
-A replay writes nothing into the Lovely log. From **Start Replay** until you are back at the main menu, every line Multiplayer would log is dropped too - the run's manifest, its actions, the money and the opponent's messages - so a replay never leaves behind a log that reads like another game. Lines from other mods are logged as usual. Progress is shown only in the config tab and `status.json`.
+A replay writes nothing into the Lovely log. From **Start Replay** until you are back at the main menu, every line Multiplayer would log is dropped too - the run's manifest, its actions, the money and the opponent's messages - so a replay never leaves behind a log that reads like another game. Lines from other mods are logged as usual. Progress is shown only in the Replays tab and `status.json`.
 
 ## Limits
 
 - The Multiplayer version, ruleset, game mode, deck and Cocktail deck pool must match the log.
-- The other installed mods should be the ones the game was played with, at the same versions. A different mod set deals a different game from the same seed - an updated Steamodded rolls a different boss blind, for one. **The config tab** compares logged mods with the mods loaded in the running game. Choose **Compare Replay Mods** for missing, extra, and changed-version counts, plus Previous/Next buttons showing full names and logged/loaded versions. **Start Replay** asks for a second press when they differ; pressing it again replays anyway. Restart Balatro after changing mod files.
+- The other installed mods should be the ones the game was played with, at the same versions. A different mod set deals a different game from the same seed - an updated Steamodded rolls a different boss blind, for one. **The config tab** compares logged mods with the mods loaded in the running game. Choose **Compare Mods** for missing, extra, and changed-version counts, plus Previous/Next buttons showing full names and logged/loaded versions. **Start Replay** asks for a second press when they differ; pressing it again replays anyway. Restart Balatro after changing mod files.
 - Challenge runs are not replayed.
 - Multiplayer logs "Buy" and "Buy & Use" the same way. The replay decides from the evidence, in this order: money moving right after the purchase means the card was used at once (a Hermit or Temperance); a consumable the shop cannot use (it needs selected cards) was bought only; no free consumable slot means Buy & Use; otherwise the first later use or sale of the slot the card would occupy tells, since every card the game adds later lands behind it and every removal in front of it is logged. Without any later reference it is a plain buy. A purchase the log shows no payment for is replayed as the refused click it was.
 - Multiplayer does not log drag reorders of the consumable rack. A run that reordered consumables by hand stops at the first use or sale that names a different card.
@@ -70,8 +70,8 @@ A replay writes nothing into the Lovely log. From **Start Replay** until you are
 - The Multiplayer round timer is off during a replay, since a replay runs at animation speed. It changes no card.
 - Replayed wins and losses are not written to Multiplayer's match history. Career statistics count as in practice mode.
 
-Log Info uses larger native deck/stake icons in wide rows without a game-type badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.
+Replays uses larger native deck/stake icons in wide rows without a game-type badge. Explicit solo/practice metadata is labeled accordingly; incomplete metadata shows Game type unknown. Ordinary solo games without supported replay records are not discoverable from this log format. Missing mod assets use text fallbacks.
 
-Each Log Info game has a Start Replay button. It selects that exact game and retains the two-press confirmation when mods differ. Starting a removed entry restores it to the replay list. Stake labels use their names (for example, White Stake).
+Each Replays game has a Start Replay button. It selects that exact game and retains the two-press confirmation when mods differ. Starting a removed entry restores it to the replay list. Stake labels use their names (for example, White Stake).
 
 Only potentially critical mismatches require two presses. Handy and JokerDisplay differences are treated as noncritical based on their control/display purpose; all unclassified mod IDs remain potentially critical. The comparison page still lists every difference. Classification references: https://github.com/SleepyG11/HandyBalatro and https://github.com/nh6574/JokerDisplay.

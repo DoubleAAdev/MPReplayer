@@ -28,6 +28,11 @@ return function(mod, JSON)
         if fatal and session.phase ~= 'idle' then session.fail(message) else session.status('Replayer: ' .. message) end
     end
 
+    local function show_replays()
+        SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1'
+        local open = G.FUNCS['openModUI_' .. mod.id]
+        if open then open() end
+    end
     G.FUNCS.brpl_load = function()
         protect(function()
             assert(session.phase == 'idle', 'Finish the current replay before loading another log')
@@ -36,6 +41,7 @@ return function(mod, JSON)
             local info = NFS.getInfo(path)
             assert(info and info.type == 'file' and info.size and info.size <= limit, 'Select a log file smaller than 16 MB')
             session.load(assert(NFS.read(path), 'Could not read the selected log'), path)
+            show_replays()
         end)
     end
     G.FUNCS.brpl_start_listed = function(e)
@@ -82,6 +88,7 @@ return function(mod, JSON)
                 local text = file:read()
                 file:close()
                 session.load(text, file:getFilename())
+                if G.OVERLAY_MENU then show_replays() end
             end)
         elseif previous_drop then
             return previous_drop(file)
@@ -126,15 +133,12 @@ return function(mod, JSON)
         return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
             left, {n = G.UIT.C, config = {minw = 0.12}}, right}}
     end
-    G.FUNCS.brpl_details_back = function()
-        G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{
-            back_func = 'openModUI_' .. mod.id, contents = {mod.config_tab()}}}
-    end
+    G.FUNCS.brpl_details_back = show_replays
     G.FUNCS.brpl_details = function()
         session.refresh_mods()
         local rows = {
             {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
-                {n = G.UIT.T, config = {text = 'Compare Replay Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
+                {n = G.UIT.T, config = {text = 'Compare Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
             row('replay_title', 0.4),
             row('mod_missing'), row('mod_extra'), row('mod_versions'), row('mod_risk', 0.32),
         }
@@ -145,17 +149,8 @@ return function(mod, JSON)
         rows[#rows + 1] = buttons(button('Previous', 'brpl_mod_prev'), button('Next', 'brpl_mod_next'))
         G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{back_func = 'brpl_details_back', contents = rows}}
     end
-    mod.config_tab = function()
-        session.label_run()
-        local rows = {row('replay_title', 0.42), row('replay_players', 0.38), row('replay_setup', 0.36), row('replay_seed', 0.32)}
-        for _, field in ipairs({'line1', 'line2', 'line3', 'line4'}) do rows[#rows + 1] = row(field, 0.32) end
-        rows[#rows + 1] = buttons(button('Load Log', 'brpl_load'), button('Next Replay', 'brpl_next'))
-        rows[#rows + 1] = buttons(button('Start Replay', 'brpl_start', nil, G.C.GREEN), button('Remove Replay', 'brpl_remove', nil, G.C.RED))
-        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {button('Compare Replay Mods', 'brpl_details', 6.3)}}
-        rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {
-            {n = G.UIT.T, config = {text = 'Remove clears the selection from the list only.', scale = 0.28, colour = G.C.WHITE}}}}
-        return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
-    end
+    mod.config_tab = nil
+    if SMODS.LAST_SELECTED_MOD_TAB == 'config' then SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1' end
     local function text(value, scale, colour)
         return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
     end
@@ -168,9 +163,10 @@ return function(mod, JSON)
         return text(fallback, 0.28)
     end
     mod.extra_tabs = function()
-        return {{label = 'Log Info', tab_definition_function = function()
+        return {{label = 'Replays', tab_definition_function = function()
             session.log_page()
-            local rows = {row('log_filename', 0.38), row('log_count', 0.3)}
+            local rows = {buttons(button('Load Log', 'brpl_load', 3.0), button('Compare Mods', 'brpl_details', 5.0)),
+                row('log_filename', 0.38), row('log_count', 0.3)}
             local runs = session.log_runs or {}
             for slot = 1, 3 do
                 local run = runs[(session.log_page_index - 1) * 3 + slot]
