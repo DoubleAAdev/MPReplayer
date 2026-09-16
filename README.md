@@ -22,10 +22,12 @@ Copy this repository into `%APPDATA%\Balatro\Mods\BalatroReplayer`, or run `./sc
 1. Open **Mods > Balatro Replayer > Config**. Choose **Load Log** and pick the Lovely log of the game (`%APPDATA%\Balatro\Mods\lovely\log`). Dropping a `.log` onto Balatro also works. A log holding several games shows one run at a time; **Next Run** cycles through them. Replays made before Balatro Replayer wrote their own run into the Lovely log, so some logs in that folder hold games nobody played; loading one says **written by an old replay, not a game you played**.
 2. Loading writes the chosen run's actions to `%APPDATA%\Balatro\balatro_replayer\actions.txt`, one row per action — exactly what the replay will execute.
 3. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby, starts the recorded seed, deck, stake, ruleset and options, and executes the actions in order. Watch the status line in the config tab or `%APPDATA%\Balatro\balatro_replayer\status.json`.
-4. When the status says the replay is complete, and Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
-5. Return to the main menu. The lobby copy is dismantled and Multiplayer is left as it was.
+4. When the status says the replay is complete, choose **End Replay** from the pause menu. If Balatro Observer is installed, open **Mods > Balatro Observer > Config > Open Action Recorder** and export the run named in the status. Without Balatro Observer the replay runs the same, with nothing recorded.
+5. Ending the replay returns to the main menu, dismantles the lobby copy, restores player controls, and leaves Multiplayer as it was.
 
-**Stop Replay** ends playback and returns to the menu. Pausing or opening a menu only pauses the replay.
+**End Replay** replaces **Leave Lobby** and **Return to Lobby** during playback and is also available in the Replayer config. Pausing or opening a menu only pauses the replay.
+
+Replays are read-only until you end them: mouse/touch card dragging, card selection, sorting, playing/discarding, purchases, sales, consumable use, and keyboard/gamepad gameplay shortcuts are blocked. Hover inspection, run/deck information, and the pause menu remain available. The lock also applies when playback has completed or stopped on a mismatch, so manual input cannot alter the displayed result. Logged replay actions and game effects continue normally.
 
 ## What is executed
 

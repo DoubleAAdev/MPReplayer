@@ -1,6 +1,8 @@
 -- Run from the repository root: python scripts/run-lua-tests.py tests/test_replayer_driver.lua
 local log = dofile('replayer/log.lua')(function() return {} end)
 local driver = dofile('replayer/driver.lua')(log)
+-- Run the whole driver suite with human input blocked.
+dofile('replayer/input-guard.lua')({phase = 'running'})
 
 local function card(name, set, extra)
     local c = {ability = {name = name, set = set, consumeable = set == 'Tarot' or set == 'Planet' or set == 'Spectral' or nil,

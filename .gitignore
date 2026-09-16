@@ -30,3 +30,7 @@ __pycache__/
 # Local UI regression captures
 /test-results/
 /playwright-report/
+
+# Local test coverage and profiling output
+/coverage/
+*.prof

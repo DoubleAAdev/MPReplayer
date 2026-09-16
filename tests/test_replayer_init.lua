@@ -31,7 +31,7 @@ end
 assert(session.line1:find('Load Log'), 'the first status is already on the lines')
 local buttons = {}
 for _, node in ipairs(tab.nodes[5].nodes) do buttons[#buttons + 1] = node.config.button end
-assert(table.concat(buttons, ',') == 'brpl_load,brpl_next,brpl_start,brpl_stop')
+assert(table.concat(buttons, ',') == 'brpl_load,brpl_next,brpl_start,brpl_end')
 for _, name in ipairs(buttons) do assert(type(G.FUNCS[name]) == 'function') end
 
 assert(tab.nodes[6].nodes[1].config.ref_value == 'mod_summary')
@@ -70,4 +70,18 @@ local result = pack(Game:update(0.1))
 assert(result.n == 2 and result[2] == 42)
 assert(Game:start_run({}) == 7 and Game:main_menu('game') == 'menu')
 assert(writes['balatro_replayer/status.json']:find('"phase":"idle"'))
+local stop_calls = 0
+local actual_stop = session.stop
+session.stop = function()
+    assert(not G.OVERLAY_MENU, 'End Replay closes the overlay before cleanup')
+    stop_calls = stop_calls + 1
+    session.phase = 'idle'
+end
+G.FUNCS.exit_overlay_menu = function() G.OVERLAY_MENU = nil end
+session.phase = 'running'; G.OVERLAY_MENU = {}
+G.FUNCS.brpl_end()
+assert(stop_calls == 1 and session.phase == 'idle')
+G.FUNCS.brpl_end()
+assert(stop_calls == 1, 'End Replay is harmless outside replays')
+session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')

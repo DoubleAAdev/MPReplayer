@@ -1,3 +1,10 @@
+## 2.2.0
+
+- Lock player gameplay input during replay playback, including mouse/touch card dragging, joker and consumable reordering, sorting, selection, use/sell/buy actions, keyboard shortcuts, and gamepad reordering.
+- Preserve hover inspection, run/deck information, and pause/resume access. The lock remains through completed or failed replays until End Replay returns to the menu.
+- Replace Leave Lobby and Return to Lobby with one End Replay control, and remove the replay-unsafe Unstuck option. End Replay closes overlays and uses the existing cleanup path.
+- Keep the two-press Start Replay confirmation for mismatched mods.
+
 ## 2.1.0
 
 - Replace the overflowing mod mismatch error with missing, extra, and changed-version counts and paged details of logged versus loaded mods.

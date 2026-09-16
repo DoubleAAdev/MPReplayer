@@ -11,6 +11,12 @@ return function(mod, JSON)
         channel = function(name) return love.thread.getChannel(name) end,
         encode = json.encode,
     })
+    -- Install after all mods have registered their input hooks.
+    local input_guard
+    local function guard()
+        if not input_guard then input_guard = load('input-guard.lua')(session) end
+        return input_guard
+    end
     local pick_file = load('file-picker.lua')
     BalatroReplayer = session
     local limit = 16 * 1024 * 1024
@@ -33,10 +39,21 @@ return function(mod, JSON)
         end)
     end
     G.FUNCS.brpl_next = function() protect(session.next_run) end
-    G.FUNCS.brpl_start = function() protect(session.start) end
+    G.FUNCS.brpl_start = function()
+        protect(session.start)
+        guard().update()
+    end
     G.FUNCS.brpl_mod_prev = function() session.mod_page(-1) end
     G.FUNCS.brpl_mod_next = function() session.mod_page(1) end
-    G.FUNCS.brpl_stop = function() protect(session.stop) end
+    G.FUNCS.brpl_end = function()
+        if session.phase == 'idle' then return end
+        protect(function()
+            if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
+            session.stop()
+        end)
+        guard().update()
+    end
+    G.FUNCS.brpl_stop = G.FUNCS.brpl_end
 
     local previous_drop = love.filedropped
     love.filedropped = function(file)
@@ -57,6 +74,7 @@ return function(mod, JSON)
     local function pack(...) return {n = select('#', ...), ...} end
     local previous_update = Game.update
     function Game:update(dt)
+        guard().update()
         local result = pack(previous_update(self, dt))
         protect(function() session.update(dt) end, true)
         return unpack(result, 1, result.n)
@@ -73,6 +91,7 @@ return function(mod, JSON)
     if previous_menu then
         function Game:main_menu(...)
             protect(session.on_main_menu)
+            guard().update()
             return previous_menu(self, ...)
         end
     end
@@ -85,7 +104,7 @@ return function(mod, JSON)
                 {n = G.UIT.T, config = {ref_table = session, ref_value = line, scale = 0.26, colour = G.C.WHITE}}}}
         end
         local buttons = {}
-        for _, item in ipairs({{'Load Log', 'brpl_load'}, {'Next Run', 'brpl_next'}, {'Start Replay', 'brpl_start'}, {'Stop Replay', 'brpl_stop'}}) do
+        for _, item in ipairs({{'Load Log', 'brpl_load'}, {'Next Run', 'brpl_next'}, {'Start Replay', 'brpl_start'}, {'End Replay', 'brpl_end'}}) do
             buttons[#buttons + 1] = {n = G.UIT.C, config = {align = 'cm', button = item[2], colour = G.C.BLUE, padding = 0.12, r = 0.1, hover = true, shadow = true},
                 nodes = {{n = G.UIT.T, config = {text = item[1], scale = 0.28, colour = G.C.WHITE}}}}
         end
