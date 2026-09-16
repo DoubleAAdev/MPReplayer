@@ -37,6 +37,14 @@ return function(log, driver, JSON, deps)
         local state = {phase = S.phase, status = S.text, step = session and session.done or 0,
             total = session and session.run.actions or 0, recording = recorder() and recorder().path or nil}
         if session and session.failure then state.failure = session.failure end
+        -- Money after each action, to find where a replay's economy left the log's.
+        if session then
+            local trail = {}
+            for _, entry in ipairs(session.entries) do
+                if entry.dollars then trail[#trail + 1] = tostring(entry.seq) .. ' ' .. entry.text .. ' $' .. entry.dollars end
+            end
+            state.dollars = table.concat(trail, '; ')
+        end
         pcall(function()
             love.filesystem.createDirectory(directory)
             love.filesystem.write(directory .. '/status.json', JSON.encode(state))
@@ -118,6 +126,7 @@ return function(log, driver, JSON, deps)
         local argstr = format_args(args)
         local actual = op .. (argstr ~= '' and (' ' .. argstr) or '')
         if entry and entry.kind == 'action' and actual == entry.text then
+            entry.dollars = tostring((G.GAME or {}).dollars)
             session.cursor = session.cursor + 1
             session.done = session.done + 1
             session.issued, session.waiting_since = nil, nil

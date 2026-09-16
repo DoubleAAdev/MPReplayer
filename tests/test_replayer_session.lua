@@ -294,7 +294,7 @@ assert(performed[4] == 'buy 1 1')
 MP.RLOG.record('buy', {1, 2}, 'action:boughtCardFromShop,card:Square Joker,cost:4')
 assert(session.phase == 'failed', session.text)
 assert(session.text:find('at action 7 %(buy 1 1%)') and session.text:find('the game did "buy 1 2", which is not the log\'s next action "buy 1 1"'), session.text)
-assert(writes['mp_replayer/status.json']:find('"phase":"failed"'))
+assert(writes['mp_replayer/status.json']:find('"phase":"failed"'), writes['mp_replayer/status.json'])
 -- Once stopped, the player's own moves are logged as usual.
 MP.RLOG.record('reroll', nil, 'action:rerollShop,cost:5')
 assert(#records == 1 and session.progress() == '4/6', 'after a failure records pass through untouched')
@@ -587,6 +587,7 @@ assert(drag_calls==1 and session.phase=='finished',session.text)
 session.on_main_menu()
 driver.state_name=function() return 'HAND_PLAYED' end
 print('PASS: a reorder after a discard waits for the redraw')
+assert(writes['mp_replayer/status.json']:find('"dollars":"128 discard 1.5.6.7.10 $nil; 129 reorder',1,true),'status.json lists money after each action')
 
 -- Native end-screen creation can happen before the next replay update.
 assert(session.active_run() == nil)
