@@ -1,3 +1,7 @@
+## 2.8.2
+
+- Hide the routine Ready to replay footer without reserving empty space. Warnings, errors, and replay progress remain visible.
+
 ## 2.8.1
 
 - Simplify Compare Mods to a short summary and one large difference card.

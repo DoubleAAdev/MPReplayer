@@ -66,3 +66,6 @@ __pycache__/
 
 # Local comparison-page QA output
 /compare-mods-qa/
+
+# Local UI smoke-check output
+/ui-smoke/

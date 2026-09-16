@@ -1,7 +1,5 @@
-# Balatro Replayer 2.8.1
+# Balatro Replayer 2.8.2
 
-- Simplify Compare Mods to a short summary and one large difference card.
-- Remove repeated replay labels, category counts, and explanatory headers; show navigation only for multiple detail pages.
-- Keep full mismatch details and compatibility checks unchanged.
+- Hide the routine Ready to replay footer without reserving empty space. Warnings, errors, and replay progress remain visible.
 
-Seven Lua suites passed. Restart Balatro to load the update.
+Restart Balatro to load the update.
