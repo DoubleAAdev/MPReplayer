@@ -233,8 +233,6 @@ return function(mod, JSON)
                     {n = G.UIT.T, config = {text = text, scale = 0.34, colour = G.C.WHITE, shadow = true}}}}
             end
             local held = session.hold
-            local label = {icon((G.ASSET_ATLAS or {}).mprpl_controls, {x = held and 1 or 0, y = 0}, 0.28, 0.28, held and '>' or '||'),
-                {n = G.UIT.C, config = {minw = 0.1}}, text(held and 'Play' or 'Pause', 0.3)}
             speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
                 {n = G.UIT.C, config = {align = 'cm', colour = {0, 0, 0, 0.1}, r = 0.1, padding = 0.07}, nodes = {
                     {n = G.UIT.R, config = {align = 'cm'}, nodes = {
@@ -248,7 +246,7 @@ return function(mod, JSON)
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
                         {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed_pause', colour = held and G.C.GREEN or G.C.BLUE, r = 0.08,
                             minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
-                            {n = G.UIT.R, config = {align = 'cm'}, nodes = label}}}}}}}}},
+                            text(held and 'Play' or 'Pause', 0.3)}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
