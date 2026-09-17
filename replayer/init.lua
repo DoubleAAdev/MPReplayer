@@ -191,7 +191,7 @@ return function(mod, JSON)
     -- 1x and 512x, wrapping at either end. Balatro starts at most one blocking event per
     -- update, so speed comes from more updates per frame, not a bigger dt.
     local speed = {value = 1, label = '1x'}
-    local speed_box, speed_deck
+    local speed_box, speed_deck, speed_hold
     local update_cost = 0.001
     local function set_speed(value)
         speed.value = value
@@ -199,16 +199,20 @@ return function(mod, JSON)
     end
     G.FUNCS.mprpl_speed_down = function() set_speed(speed.value <= 1 and 512 or speed.value / 2) end
     G.FUNCS.mprpl_speed_up = function() set_speed(speed.value >= 512 and 1 or speed.value * 2) end
+    -- Pause holds the replay's next move; the game itself keeps running.
+    G.FUNCS.mprpl_speed_pause = function() session.hold = not session.hold end
     local function sync_speed_button()
         local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
-        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED) then
+        -- The button's icon and colour are fixed per box, so a toggle rebuilds it.
+        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED or speed_hold ~= session.hold) then
             if not speed_box.REMOVED then speed_box:remove() end
             speed_box, speed_deck = nil, nil
         end
         if not show then
             set_speed(1)
+            session.hold = false
         elseif not speed_box then
-            speed_deck = G.deck
+            speed_deck, speed_hold = G.deck, session.hold
             -- Styled like the run HUD's boxes: a dark embossed panel, a
             -- label over an inset value, and orange buttons like Options.
             local dyn = G.C.DYN_UI or {}
@@ -217,6 +221,14 @@ return function(mod, JSON)
                     minw = 0.42, minh = 0.42, hover = true, shadow = true, emboss = 0.04}, nodes = {
                     {n = G.UIT.T, config = {text = text, scale = 0.34, colour = G.C.WHITE, shadow = true}}}}
             end
+            -- Drawn icons, not glyphs the game font may lack: two pause bars,
+            -- or a play triangle in pixel steps.
+            local function bar(w, h) return {n = G.UIT.C, config = {minw = w, minh = h, colour = G.C.WHITE}} end
+            local held = session.hold
+            local icon = held and {bar(0.03, 0.2), bar(0.03, 0.16), bar(0.03, 0.12), bar(0.03, 0.08), bar(0.03, 0.04)}
+                or {bar(0.055, 0.19), {n = G.UIT.C, config = {minw = 0.05}}, bar(0.055, 0.19)}
+            icon[#icon + 1] = {n = G.UIT.C, config = {minw = 0.1}}
+            icon[#icon + 1] = {n = G.UIT.T, config = {text = held and 'Play' or 'Pause', scale = 0.3, colour = G.C.WHITE, shadow = true}}
             speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
                 {n = G.UIT.C, config = {align = 'cm', colour = dyn.MAIN or G.C.BLACK, r = 0.12, padding = 0.07, emboss = 0.05}, nodes = {
                     {n = G.UIT.R, config = {align = 'cm'}, nodes = {
@@ -225,7 +237,12 @@ return function(mod, JSON)
                         arrow('<', 'mprpl_speed_down'),
                         {n = G.UIT.C, config = {align = 'cm', colour = dyn.BOSS_DARK or G.C.BLACK, r = 0.08, minw = 0.95, minh = 0.42}, nodes = {
                             {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.34, colour = G.C.WHITE, shadow = true}}}},
-                        arrow('>', 'mprpl_speed_up')}}}}}},
+                        arrow('>', 'mprpl_speed_up')}},
+                    -- As wide as the arrow row: 0.42 + 0.95 + 0.42 plus three gaps.
+                    {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed_pause', colour = held and G.C.GREEN or G.C.BLUE, r = 0.08,
+                            minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
+                            {n = G.UIT.R, config = {align = 'cm'}, nodes = icon}}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end

@@ -9,7 +9,7 @@ return function(session)
         run_info = true, deck_info = true, change_tab = true, lobby_info = true,
         saturn_config = true, settings = true, mods_button = true,
         high_scores = true, your_collection = true, customize_deck = true,
-        mprpl_mod_prev = true, mprpl_mod_next = true, mprpl_speed_down = true, mprpl_speed_up = true,
+        mprpl_mod_prev = true, mprpl_mod_next = true, mprpl_speed_down = true, mprpl_speed_up = true, mprpl_speed_pause = true,
     }
     local exits = {mp_return_to_lobby = true, lobby_leave = true}
     local function is_card(node)

@@ -750,6 +750,12 @@ return function(log, driver, JSON, deps)
             return
         end
         if entry.auto then return waiting('the game to produce "' .. entry.text .. '"') end
+        -- Paused from the speed control: the next move waits once the game has
+        -- settled. A move logged while the game resolves still happens on time.
+        if S.hold and not busy() then
+            session.waiting_since = nil
+            return
+        end
         -- Jokers can be dragged while the game is still resolving, and it may
         -- remove one right after (a Pizza eaten on the round results). Once the
         -- replay has reached the log's round end and the jokers have held the
