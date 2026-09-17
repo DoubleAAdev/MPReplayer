@@ -187,6 +187,17 @@ return function(mod, JSON)
     end
 
     local function pack(...) return {n = select('#', ...), ...} end
+    local function text(value, scale, colour)
+        return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
+    end
+    local function icon(atlas, pos, w, h, fallback)
+        if Sprite and atlas then
+            local sprite = Sprite(0, 0, w, h, atlas, pos or {x = 0, y = 0})
+            sprite.states.drag.can, sprite.states.collide.can = false, false
+            return {n = G.UIT.O, config = {object = sprite}}
+        end
+        return text(fallback, 0.28)
+    end
     -- Fast forward: arrows above the deck halve or double the speed between
     -- 1x and 512x, wrapping at either end. Balatro starts at most one blocking event per
     -- update, so speed comes from more updates per frame, not a bigger dt.
@@ -221,14 +232,9 @@ return function(mod, JSON)
                     minw = 0.42, minh = 0.42, hover = true, shadow = true, emboss = 0.04}, nodes = {
                     {n = G.UIT.T, config = {text = text, scale = 0.34, colour = G.C.WHITE, shadow = true}}}}
             end
-            -- Drawn icons, not glyphs the game font may lack: two pause bars,
-            -- or a play triangle in pixel steps.
-            local function bar(w, h) return {n = G.UIT.C, config = {minw = w, minh = h, colour = G.C.WHITE}} end
             local held = session.hold
-            local icon = held and {bar(0.03, 0.2), bar(0.03, 0.16), bar(0.03, 0.12), bar(0.03, 0.08), bar(0.03, 0.04)}
-                or {bar(0.055, 0.19), {n = G.UIT.C, config = {minw = 0.05}}, bar(0.055, 0.19)}
-            icon[#icon + 1] = {n = G.UIT.C, config = {minw = 0.1}}
-            icon[#icon + 1] = {n = G.UIT.T, config = {text = held and 'Play' or 'Pause', scale = 0.3, colour = G.C.WHITE, shadow = true}}
+            local label = {icon((G.ASSET_ATLAS or {}).mprpl_controls, {x = held and 1 or 0, y = 0}, 0.28, 0.28, held and '>' or '||'),
+                {n = G.UIT.C, config = {minw = 0.1}}, text(held and 'Play' or 'Pause', 0.3)}
             speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
                 {n = G.UIT.C, config = {align = 'cm', colour = dyn.MAIN or G.C.BLACK, r = 0.12, padding = 0.07, emboss = 0.05}, nodes = {
                     {n = G.UIT.R, config = {align = 'cm'}, nodes = {
@@ -242,7 +248,7 @@ return function(mod, JSON)
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
                         {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed_pause', colour = held and G.C.GREEN or G.C.BLUE, r = 0.08,
                             minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
-                            {n = G.UIT.R, config = {align = 'cm'}, nodes = icon}}}}}}}}},
+                            {n = G.UIT.R, config = {align = 'cm'}, nodes = label}}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
@@ -360,17 +366,6 @@ return function(mod, JSON)
     end
     mod.config_tab = function() return mod.extra_tabs()[1].tab_definition_function() end
     if SMODS.LAST_SELECTED_MOD_TAB == 'config' then SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1' end
-    local function text(value, scale, colour)
-        return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
-    end
-    local function icon(atlas, pos, w, h, fallback)
-        if Sprite and atlas then
-            local sprite = Sprite(0, 0, w, h, atlas, pos or {x = 0, y = 0})
-            sprite.states.drag.can, sprite.states.collide.can = false, false
-            return {n = G.UIT.O, config = {object = sprite}}
-        end
-        return text(fallback, 0.28)
-    end
     local debug_tab = load('debug.lua')(session, mod, JSON)
     mod.extra_tabs = function()
         if session.phase ~= 'idle' then return {{label = 'Debug', tab_definition_function = debug_tab.definition}} end
