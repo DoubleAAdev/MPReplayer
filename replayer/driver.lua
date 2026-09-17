@@ -20,8 +20,9 @@ return function(log)
     end
     M.state_name = state_name
 
+    local pack_states = {'SMODS_BOOSTER_OPENED', 'TAROT_PACK', 'PLANET_PACK', 'SPECTRAL_PACK', 'STANDARD_PACK', 'BUFFOON_PACK'}
     local function in_pack()
-        for _, name in ipairs({'SMODS_BOOSTER_OPENED', 'TAROT_PACK', 'PLANET_PACK', 'SPECTRAL_PACK', 'STANDARD_PACK', 'BUFFOON_PACK'}) do
+        for _, name in ipairs(pack_states) do
             if G.STATES[name] and G.STATE == G.STATES[name] then return true end
         end
         return false
@@ -452,7 +453,7 @@ return function(log)
         if not state_is('BLIND_SELECT') or not G.blind_select then return 'wait', 'blind select is not open (' .. state_name() .. ')' end
         local node, why = blind_button(name)
         if not node then
-            if name == 'select_blind' and select(1, blind_button('mp_toggle_ready')) then
+            if name == 'select_blind' and blind_button('mp_toggle_ready') then
                 error('this blind needs Ready first, but the log selects it directly')
             end
             return 'wait', why

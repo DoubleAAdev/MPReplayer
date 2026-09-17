@@ -260,21 +260,18 @@ return function(log, driver, JSON, deps)
     function S.load(text, source)
         assert(S.phase == 'idle', 'Finish the current replay before loading another log')
         local imported = log.parse(text) -- Parse before mutating the existing list.
+        -- Two lists: runs is the selection, which removals shorten; log_runs is the log itself.
         S.runs, S.log_runs = {}, {}
-        local first = #S.runs + 1
-        local first_log = #S.log_runs + 1
         local filename = short(tostring(source or 'Loaded log'):gsub('\\', '/'):match('[^/]+$'), 40)
-        for _, run in ipairs(imported) do
-            run.label_number = #S.log_runs + 1
+        for i, run in ipairs(imported) do
+            run.label_number = i
             run.source_name = filename
-            S.runs[#S.runs + 1] = run
-            S.log_runs[#S.log_runs + 1] = run
+            S.runs[i], S.log_runs[i] = run, run
         end
-        S.log_imports = 1
         S.log_source = filename
-        S.log_page_index = math.floor((first_log - 1) / 3) + 1
+        S.log_page_index = 1
         S.log_page()
-        S.index = first
+        S.index = 1
         show_run()
     end
 
@@ -409,7 +406,6 @@ return function(log, driver, JSON, deps)
         local current = MP and MP.MOD_STRING
         S.mod_pages, S.mod_page_index = {}, 1
         S.mod_summary = not run and 'Load a replay to compare mods' or 'Mod information unavailable'
-        S.mod_missing, S.mod_extra, S.mod_versions = '', '', ''
         S.mod_overview = not run and 'Load a log first' or 'No mod data in this log'
         S.mod_hint = ''
         S.steamodded_warning, S.steamodded_loaded = nil, nil
@@ -430,9 +426,6 @@ return function(log, driver, JSON, deps)
             end
             S.mod_risk = critical > 0 and (critical .. ' potentially critical differences') or 'No critical mod differences'
             S.mod_summary = 'Missing: ' .. #missing .. ' | Extra: ' .. #extra .. ' | Versions: ' .. #changed
-            S.mod_missing = 'Missing from this game: ' .. #missing
-            S.mod_extra = 'Extra in this game: ' .. #extra
-            S.mod_versions = 'Different versions: ' .. #changed
             for _, id in ipairs(missing) do differences[#differences + 1] = {'Missing: ' .. id, 'Log: ' .. logged[id], 'Loaded: absent'} end
             for _, id in ipairs(extra) do differences[#differences + 1] = {'Extra: ' .. id, 'Log: absent', 'Loaded: ' .. loaded[id]} end
             for _, id in ipairs(changed) do differences[#differences + 1] = {'Version: ' .. id, 'Log: ' .. logged[id], 'Loaded: ' .. loaded[id]} end
