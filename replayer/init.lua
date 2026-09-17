@@ -224,8 +224,8 @@ return function(mod, JSON)
             session.hold = false
         elseif not speed_box then
             speed_deck, speed_hold = G.deck, session.hold
-            -- Styled like the run HUD's boxes: a dark embossed panel, a
-            -- label over an inset value, and orange buttons like Options.
+            -- The panel is shaded like the card areas beside it, with a label over
+            -- an inset value from the run HUD and orange buttons like Options.
             local dyn = G.C.DYN_UI or {}
             local function arrow(text, callback)
                 return {n = G.UIT.C, config = {align = 'cm', button = callback, colour = G.C.ORANGE, r = 0.08,
@@ -236,7 +236,7 @@ return function(mod, JSON)
             local label = {icon((G.ASSET_ATLAS or {}).mprpl_controls, {x = held and 1 or 0, y = 0}, 0.28, 0.28, held and '>' or '||'),
                 {n = G.UIT.C, config = {minw = 0.1}}, text(held and 'Play' or 'Pause', 0.3)}
             speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
-                {n = G.UIT.C, config = {align = 'cm', colour = dyn.MAIN or G.C.BLACK, r = 0.12, padding = 0.07, emboss = 0.05}, nodes = {
+                {n = G.UIT.C, config = {align = 'cm', colour = {0, 0, 0, 0.1}, r = 0.1, padding = 0.07}, nodes = {
                     {n = G.UIT.R, config = {align = 'cm'}, nodes = {
                         {n = G.UIT.T, config = {text = 'Speed', scale = 0.28, colour = G.C.WHITE, shadow = true}}}},
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
