@@ -1,11 +1,11 @@
 # MP Replayer
 
-A Steamodded mod that replays a Multiplayer game from its Lovely log, action by action. With [Balatro Observer](https://github.com/DoubleAAdev/BalatroObserver) installed, its Action Recorder records the replay with card identities.
+A Steamodded mod that replays a Multiplayer game from its Lovely log, action by action.
 
 ## Requirements
 
 - [Steamodded](https://github.com/Steamodded/smods) 1.0.0 beta or newer
-- The Multiplayer mod, at the version the log was played with (named in the log's manifest)
+- The Multiplayer mod, at the version the log was played with or above (named in the log's manifest)
 
 ## Install
 
