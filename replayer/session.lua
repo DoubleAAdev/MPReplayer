@@ -317,6 +317,17 @@ return function(log, driver, JSON, deps)
         S.start()
     end
 
+    -- Challenge: the same lobby, deck, stake and seed the log was played on,
+    -- with the log's player as the nemesis and this player playing it live.
+    function S.challenge_listed(run)
+        S.challenge = true
+        local ok, err = pcall(S.start_listed, run)
+        if not ok then
+            S.challenge = nil
+            error(err, 0)
+        end
+    end
+
     function S.remove_run()
         if not S.runs then return end
         if S.phase ~= 'idle' then S.stop() end
@@ -552,38 +563,52 @@ return function(log, driver, JSON, deps)
             end
         end
         session = {run = run, entries = run.entries, cursor = 1, done = 0, key = key, began = clock(), tick = 0}
-        -- Every PvP blind the log holds, in order: who reached it first and the
-        -- opponent's running score after each of their hands. Take Over plays
-        -- the player against these, one of their hands per hand played.
+        -- Every PvP blind the log holds, in order, with the side that plays as
+        -- the nemesis: the opponent in a replay the player takes over, and the
+        -- log's own player in a challenge, which is who the challenger faces.
         session.pvp, session.pvp_index = {}, 1
-        local blind
-        for _, entry in ipairs(run.entries) do
-            if entry.kind == 'message' then
-                if entry.action == 'startBlind' then
-                    blind = {first = entry.fields.firstPlayer, hands = {}}
-                    session.pvp[#session.pvp + 1] = blind
-                elseif entry.action == 'endPvP' then
-                    blind = nil
-                elseif blind and entry.action == 'enemyInfo' and entry.fields.score then
-                    -- enemyInfo repeats several times per hand, so the hand it
-                    -- reports is what separates one from the next; the last
-                    -- score for a hand is the one that hand finished on.
-                    local last = blind.hands[#blind.hands]
-                    if last and last.left == entry.fields.handsLeft then
-                        last.score = entry.fields.score
-                    else
-                        blind.hands[#blind.hands + 1] = {score = entry.fields.score, left = entry.fields.handsLeft}
-                    end
-                end
+        local best, finals = nil, {}
+        for _, blind in ipairs(run.pvp or {}) do
+            local hands = S.challenge and blind.player or blind.enemy
+            session.pvp[#session.pvp + 1] = {first = blind.first, hands = hands}
+            local final = hands[#hands]
+            if final then
+                finals[#finals + 1] = tonumber(final.score) or 0
+                if not best or (tonumber(final.score) or 0) > (tonumber(best.score) or 0) then best = final end
             end
         end
+        -- Past the last PvP blind the log holds, the nemesis keeps going: their
+        -- best score, multiplied again for every blind beyond the log, so the
+        -- challenge ends rather than running on a number they cannot pass.
+        -- The multiplier is a quarter more than how fast this nemesis was
+        -- growing blind to blind, and never less than 1.75. Their middle blind
+        -- sets the pace, not their mean: one explosive blind in a run would
+        -- otherwise set a climb the rest of it never justified.
+        local ratios = {}
+        for i = 2, #finals do
+            if finals[i - 1] > 0 then ratios[#ratios + 1] = finals[i] / finals[i - 1] end
+        end
+        table.sort(ratios)
+        local middle, half = 0, math.floor(#ratios / 2)
+        if #ratios > 0 then
+            middle = #ratios % 2 == 1 and ratios[half + 1] or (ratios[half] + ratios[half + 1]) / 2
+        end
+        session.spent_factor = math.max(1.25 * middle, 1.75)
+        session.spent_score = best and tonumber(best.score) or 0
+        session.spent, session.spent_at = nil, nil
         session.code = m.lobby_code or 'REPLAY'
         -- Setting the code is what joining a lobby does; Multiplayer notices
         -- on its next update and re-enters the menu as a lobby member.
         MP.LOBBY.code = session.code
         if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
         S.phase = 'joining'
-        S.status('Replay joining lobby ' .. session.code .. ' - ' .. run.actions .. ' actions')
+        if S.challenge then
+            -- The player plays this run themselves; the log is the nemesis.
+            S.unlocked = true
+            S.status('Challenge joining lobby ' .. session.code .. ' - ' .. #session.pvp .. ' PvP blinds')
+        else
+            S.status('Replay joining lobby ' .. session.code .. ' - ' .. run.actions .. ' actions')
+        end
     end
 
     local function cleanup()
@@ -599,6 +624,7 @@ return function(log, driver, JSON, deps)
         MP.MODIFIERS = saved.modifiers
         if MP.SP then for k, v in pairs(saved.sp) do MP.SP[k] = v end end
         if MP.reset_game_states then MP.reset_game_states() end
+        S.challenge = nil
         if saved.console then sendMessageToConsole = saved.console end
         saved = nil
     end
@@ -656,6 +682,15 @@ return function(log, driver, JSON, deps)
         session.recording = rec and rec.ok and rec.path or nil
         S.phase = 'running'
         session.signature, session.signature_at = nil, nil
+        if S.challenge then
+            -- A live game is handed its lives by the server, in playerInfo. A
+            -- challenge has no server and delivers nothing from the log, so
+            -- both sides start on the count the lobby was played with.
+            local starting = (MP.LOBBY.config or {}).starting_lives or 4
+            MP.GAME.lives = starting
+            if MP.GAME.enemy then MP.GAME.enemy.lives = starting end
+            return S.status('Challenge running - ' .. #session.pvp .. ' PvP blinds, ' .. starting .. ' lives each')
+        end
         S.status('Replay running - ' .. progress() .. ' actions')
     end
 
@@ -811,10 +846,24 @@ return function(log, driver, JSON, deps)
     -- Take Over: the player plays their own game, so the replay performs
     -- nothing and delivers nothing from the log. The PvP blind is the one
     -- thing it still drives, against the scores read at the start.
+    -- One blind's worth of nemesis past the end of the log, built once per
+    -- blind so the score climbs a step at a time rather than every frame.
+    local function spent_record()
+        if session.spent_at ~= session.pvp_index then
+            session.spent_at = session.pvp_index
+            session.spent_score = session.spent_score * session.spent_factor
+            -- Rounded here rather than left to the formatter, which breaks
+            -- ties to even and would read differently on another build.
+            session.spent = {hands = session.spent_score > 0
+                and {{score = string.format('%.0f', math.floor(session.spent_score + 0.5)), left = 0}} or {}}
+        end
+        return session.spent
+    end
+
     local function free_play()
-        local record = session.pvp[session.pvp_index]
+        local record = session.pvp[session.pvp_index] or spent_record()
         local enemy = ((MP.GAME or {}).enemy)
-        if not record or not enemy then return end
+        if not enemy then return end
         if not (MP.is_pvp_boss and MP.is_pvp_boss()) then
             session.pvp_settled, session.pvp_hands = nil, nil
             -- The player's Ready starts the blind, as the server's startBlind
