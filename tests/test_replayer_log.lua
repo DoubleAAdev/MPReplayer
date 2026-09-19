@@ -46,6 +46,10 @@ local lines = {
     P .. 'Client sent message: action:rerollShop,cost:5',
     P .. 'MP_RLOG: 7 ready_blind 1',
     P .. 'Client got startBlind message:  (firstPlayer: guest)  (action: startBlind) ',
+    P .. 'Client sent message: {"action":"playHand","handsLeft":3,"score":"0"}',
+    P .. 'Client sent message: {"action":"playHand","handsLeft":2,"score":"120"}',
+    P .. 'Client sent message: {"action":"playHand","handsLeft":2,"score":"140"}',
+    P .. 'Client sent message: {"action":"playHand","handsLeft":1,"score":"900"}',
     P .. 'MP_RLOG: 8 set_ante_key 0.5',
     P .. 'MP_RLOG: 9 select_blind 0',
     P .. 'Client sent message: action:selectBlind,blind:bl_mp_nemesis',
@@ -214,4 +218,13 @@ if real then
     assert(counts.enemyInfo == 114 and counts.playerInfo == 4 and counts.spentLastShop == 20, 'enemyInfo ' .. tostring(counts.enemyInfo))
     print('PASS: real log parsed - 617 actions, ' .. #parsed[1].entries .. ' entries')
 end
+-- Both sides of a PvP blind, hand by hand: the opponent from what the server
+-- said about them, the player from what this client reported playing.
+local pvp = run.pvp
+assert(#pvp == 1 and pvp[1].first == 'guest', 'one PvP blind, with who reached it first')
+assert(#pvp[1].player == 2, 'the opening report before a hand is played is not a hand: ' .. #pvp[1].player)
+assert(pvp[1].player[1].score == '140' and pvp[1].player[1].left == 2, 'a hand reported twice is one hand, at its final score')
+assert(pvp[1].player[2].score == '900' and pvp[1].player[2].left == 1)
+assert(#pvp[1].enemy == 1 and pvp[1].enemy[1].score == '39949166664' and pvp[1].enemy[1].left == 4)
+
 print('PASS: the action filter, run framing, interleaved messages, mirrored lines, the action table, wire types, expectations and rejection of broken streams')

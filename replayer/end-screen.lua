@@ -75,12 +75,9 @@ return function(session, show_replays, after_start)
         elseif not run.complete then
             rows[#rows + 1] = row({text('End of the available recording', 0.3, G.C.ORANGE)})
         end
-        rows[#rows + 1] = row({button('Restart Replay', 'mprpl_restart', G.C.GREEN),
+        rows[#rows + 1] = row({button(session.challenge and 'Restart Challenge' or 'Restart Replay', 'mprpl_restart', G.C.GREEN),
             {n = G.UIT.C, config = {minw = 0.15}}, button('Replays', 'mprpl_replays', G.C.BLUE)})
         rows[#rows + 1] = row({button('Main Menu', 'mprpl_main_menu', G.C.RED, 6.9)})
-        if session.unlocked then
-            rows[#rows + 1] = row({button('Hand Back', 'mprpl_control', G.C.ORANGE, 6.9)})
-        end
         return create_UIBox_generic_options{no_back = true, no_esc = true, contents = rows}
     end
     local function leave(destination)
@@ -88,7 +85,9 @@ return function(session, show_replays, after_start)
         if not run or pending then return end
         -- Multiplayer owns the asynchronous return to the main menu. Wait for
         -- session cleanup before restarting or opening the mod's Replays tab.
-        pending = {destination = destination, run = run}
+        -- What is being left decides what a restart starts, and the session
+        -- has forgotten which by the time the menu is ready for it.
+        pending = {destination = destination, run = run, challenge = session.challenge}
         if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
         session.stop()
     end
@@ -125,7 +124,8 @@ return function(session, show_replays, after_start)
             if next_action.destination == 'restart' then
                 -- Whatever the player confirmed to start this run stands for
                 -- restarting it; asking the same question twice is noise.
-                session.start_listed(next_action.run)
+                if next_action.challenge then session.challenge_listed(next_action.run)
+                else session.start_listed(next_action.run) end
                 after_start()
             elseif next_action.destination == 'replays' then
                 show_replays()

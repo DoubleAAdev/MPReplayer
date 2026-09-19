@@ -119,6 +119,22 @@ return function(mod, JSON)
         after_start()
     end
     G.FUNCS.mprpl_start_listed = function(e) start_with(function() session.start_listed(e.config.ref_table) end) end
+    -- The game's hover box, built and placed by hand. UIElement:hover resets
+    -- h_popup_config to align 'tm' every time it renders a config.tooltip, so
+    -- the box always lands above the button and over Start Replay. Setting
+    -- h_popup itself leaves that branch alone and Node:hover uses what is
+    -- here: the same box from the same builder, to the button's right.
+    local CHALLENGE_TIP = {title = 'Challenge', text = {
+        'Play this run yourself,', 'with the replay as your nemesis.'}}
+    G.FUNCS.mprpl_challenge_popup = function(e)
+        e.config.h_popup = e.config.h_popup or create_popup_UIBox_tooltip(CHALLENGE_TIP)
+        e.config.h_popup_config = {align = 'cr', offset = {x = 0.1, y = 0}, parent = e}
+    end
+    -- Challenge: the same lobby the log was played in, on its deck, stake and
+    -- seed, with the log's player as the nemesis and this player playing live.
+    G.FUNCS.mprpl_versus_listed = function(e)
+        start_with(function() session.challenge_listed(e.config.ref_table) end)
+    end
     G.FUNCS.mprpl_start = function() start_with(session.start) end
     G.FUNCS.mprpl_cancel_replay = function()
         pending_confirmation = nil
@@ -182,6 +198,24 @@ return function(mod, JSON)
     end
 
     local function pack(...) return {n = select('#', ...), ...} end
+    -- Play Against sits under Start Replay's green, beside the blue Load Log
+    -- and Compare Mods and the orange Back, so it takes the violet the tabs
+    -- above already use: its own role, and no argument with the greens.
+    local VERSUS_VIOLET = {0.55, 0.32, 0.85, 1}
+    -- UIBox_button puts func on the same node as the button and the hover, and
+    -- that node runs it every frame, which is where the hover box is hung.
+    local function challenge(run)
+        return UIBox_button{label = {'Challenge'}, button = 'mprpl_versus_listed', ref_table = run,
+            minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = VERSUS_VIOLET,
+            func = 'mprpl_challenge_popup'}
+    end
+    -- Takes a colour down a little without moving its hue. A texture pack can
+    -- put anything in the palette, so an unreadable one is left as it is
+    -- rather than taking the whole tab down over a colour.
+    local function darker(colour, factor)
+        if type(colour) ~= 'table' or type(colour[1]) ~= 'number' then return colour end
+        return {colour[1] * factor, colour[2] * factor, colour[3] * factor, colour[4] or 1}
+    end
     local function text(value, scale, colour)
         return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
     end
@@ -214,7 +248,7 @@ return function(mod, JSON)
     -- Take Over halts the replay and gives every control back to the player.
     G.FUNCS.mprpl_control = function() protect(session.control, true) end
     local function sync_speed_button()
-        local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
+        local show = session.phase ~= 'idle' and not session.challenge and G.STAGE == G.STAGES.RUN and G.deck ~= nil
         local waiting = session.takeover or session.returning or session.restoring
         -- The pause button's label and colour are fixed per box, so a toggle rebuilds it.
         if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED
@@ -224,7 +258,9 @@ return function(mod, JSON)
         end
         if not show then
             set_speed(default_speed)
-            session.hold, session.unlocked = false, false
+            -- Only once nothing is running: a challenge hides the panel and
+            -- keeps the controls, and must not have them taken back here.
+            if session.phase == 'idle' then session.hold, session.unlocked = false, false end
         elseif not speed_box then
             speed_deck, speed_hold, speed_free = G.deck, session.hold, session.unlocked
             speed_wait = waiting
@@ -396,8 +432,11 @@ return function(mod, JSON)
                             {n = G.UIT.R, config = {align = 'cl', padding = 0.04}, nodes = {
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
                                 text(session.stake_name(m.stake), 0.3)}}}},
-                        UIBox_button{label = {'Start Replay'}, button = 'mprpl_start_listed', ref_table = run,
-                            minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = G.C.GREEN or G.C.BLUE}}}
+                        {n = G.UIT.C, config = {align = 'cm'}, nodes = {
+                            {n = G.UIT.R, config = {align = 'cm'}, nodes = {
+                                UIBox_button{label = {'Start Replay'}, button = 'mprpl_start_listed', ref_table = run,
+                                    minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = darker(G.C.GREEN or G.C.BLUE, 0.85)}}},
+                            {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {challenge(run)}}}}}}
                 end
             end
             if #runs == 0 then rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {text('Load a log to see its games.')}} end

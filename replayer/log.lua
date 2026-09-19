@@ -125,9 +125,32 @@ return function(decode)
     -- Returns the runs found in the text. Each run holds the manifest, the
     -- entries to replay in log order (actions and delivered messages) and the
     -- lobby names seen before the game started.
+    -- Both sides of a PvP blind, hand by hand. Multiplayer reports a hand
+    -- several times over, so the hand a report names is what separates one
+    -- from the next and the last score for a hand is what it finished on.
+    local function record_hand(hands, left, score)
+        if not score then return end
+        local last = hands[#hands]
+        if last and last.left == left then last.score = score
+        else hands[#hands + 1] = {score = score, left = left} end
+    end
+    -- Both sides report once as the blind opens, before a hand is played.
+    -- ponytail: read as the opening report because it is a zero before any
+    -- other, which a hand that really scored nothing would also look like.
+    local function drop_opening(hands)
+        if #hands > 1 and tonumber(hands[1].score) == 0 then table.remove(hands, 1) end
+    end
+
     function M.parse(text)
         assert(type(text) == 'string' and #text <= 16 * 1024 * 1024, 'Log exceeds 16 MB')
         local runs, run, lobby, pending, paying, number = {}, nil, nil, nil, nil, 0
+        -- The PvP blind being played, while one is. A run that ends inside one
+        -- never sees its endPvP, so every way out of a blind closes it.
+        local pvp
+        local function close_pvp()
+            if pvp then drop_opening(pvp.enemy); drop_opening(pvp.player) end
+            pvp = nil
+        end
         -- Whether the player reached the shop since the last action.
         local shopped
         -- Replays before MP Replayer wrote their own run into the Lovely
@@ -144,14 +167,16 @@ return function(decode)
             local payload = line:match('^MP_RLOG: (.*)$') or line:match(':: MULTIPLAYER :: MP_RLOG: (.*)$')
             if payload then
                 if payload:match('^MANIFEST ') then
+                    close_pvp()
                     run = {manifest = parse_manifest(payload:sub(10)), manifest_text = payload:sub(10), entries = {}, idols = {}, actions = 0, seq = 0,
-                        complete = false, lobby = lobby, line = number}
+                        complete = false, lobby = lobby, line = number, pvp = {}}
                     run.replayed = replaying ~= nil and replaying == run.manifest.seed or nil
                     replaying = nil
                     runs[#runs + 1] = run
                     pending, paying = nil, nil
                 elseif payload:match('^END ') then
                     assert(run, 'END without a manifest')
+                    close_pvp()
                     local ok, outcome = pcall(decode, payload:sub(5))
                     run.complete = true
                     run.result = ok and type(outcome) == 'table' and outcome.result or nil
@@ -190,6 +215,10 @@ return function(decode)
                     replaying = started
                 elseif line:find(':: MULTIPLAYER :: Client sent message: {"location":"loc_shop', 1, true) then
                     shopped = true
+                elseif pvp and line:find('"action":"playHand"', 1, true) then
+                    -- The player's own hand, as they reported it to the server.
+                    -- In a PvP blind it is what a challenger plays against.
+                    record_hand(pvp.player, tonumber(line:match('"handsLeft":(%-?%d+)')), line:match('"score":"([^"]*)"'))
                 elseif run and not human and line:find(':: BalatroObserver :: Replay running', 1, true) then
                     run.replayed = true
                 elseif human then
@@ -209,8 +238,17 @@ return function(decode)
                         local fields = M.message_fields(action, rest)
                         lobby = {host = fields.host, guest = fields.guest, is_host = fields.isHost}
                     elseif action and run and not not_delivered[action] then
+                        local fields = M.message_fields(action, rest)
                         run.entries[#run.entries + 1] = {kind = 'message', action = action,
-                            fields = M.message_fields(action, rest), line = number, position = #run.entries + 1}
+                            fields = fields, line = number, position = #run.entries + 1}
+                        if action == 'startBlind' then
+                            pvp = {first = fields.firstPlayer, enemy = {}, player = {}, line = number}
+                            run.pvp[#run.pvp + 1] = pvp
+                        elseif action == 'endPvP' then
+                            close_pvp()
+                        elseif pvp and action == 'enemyInfo' then
+                            record_hand(pvp.enemy, fields.handsLeft, fields.score)
+                        end
                         -- The one opponent effect that moves money must not
                         -- be read as the effect of the player's last action.
                         if action == 'letsGoGamblingNemesis' then paying = nil end
@@ -218,6 +256,7 @@ return function(decode)
                 end
             end
         end
+        close_pvp()
         assert(#runs > 0, 'No MP_RLOG manifest found in this log')
         -- An abandoned lobby leaves a manifest without a single action.
         local playable = {}

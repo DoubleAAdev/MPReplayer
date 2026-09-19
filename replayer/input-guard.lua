@@ -216,7 +216,7 @@ return function(session)
             for _, child in pairs(node.nodes or {}) do retarget(child) end
         end
         retarget(made)
-        relabel(made, 'Restart Replay')
+        relabel(made, session.challenge and 'Restart Challenge' or 'Restart Replay')
         return made
     end
 
@@ -233,7 +233,7 @@ return function(session)
             if exits[config.button] then
                 if end_node then return nil end
                 config.button, config.func, config.id = 'mprpl_end', nil, 'mprpl_end'
-                relabel(node, 'End Replay')
+                relabel(node, session.challenge and 'End Challenge' or 'End Replay')
                 end_node = node
                 return node
             end

@@ -25,6 +25,11 @@ session.stop = function()
     assert(not G.OVERLAY_MENU)
     stopped = stopped + 1; session.phase = 'stopped'
 end
+local challenged = 0
+session.challenge_listed = function(selected)
+    assert(selected == run and session.phase == 'idle' and G.STAGE == G.STAGES.MAIN_MENU)
+    challenged = challenged + 1; session.phase = 'joining'; active = selected
+end
 session.start_listed = function(selected)
     assert(selected == run and session.phase == 'idle' and G.STAGE == G.STAGES.MAIN_MENU)
     -- The player already approved the mod difference to start this run, so
@@ -60,6 +65,16 @@ assert(text:find('WINNER|Bob', 1, true) and text:find('LOSER|Alice', 1, true))
 run.result, run.complete = nil, false; text = contents(screen.definition(run))
 assert(text:find('Result not recorded', 1, true) and not text:find('WINNER', 1, true))
 assert(text:find('End of the available recording', 1, true))
+-- This screen is the end of the run, whoever was playing it. Hand Back returns
+-- a taken-over replay to playback, which there is no longer any of.
+session.unlocked = true
+assert(not contents(screen.definition(run)):find('Hand Back', 1, true), 'nothing to hand back to once it is over')
+-- A challenge restarts as a challenge, not as a replay of someone else's run.
+session.challenge = true
+assert(contents(screen.definition(run)):find('Restart Challenge', 1, true), 'the restart says what it restarts')
+session.challenge = nil
+assert(contents(screen.definition(run)):find('Restart Replay', 1, true))
+session.unlocked = nil
 run.manifest.player, run.manifest.opponent, run.manifest.is_host = nil, nil, false
 run.lobby = {host = 'Host~1', guest = 'Guest~2'}; run.result = 'win'
 text = contents(screen.definition(run))
@@ -82,7 +97,17 @@ assert(restarted == 0, 'nor is a screen wipe')
 G.CONTROLLER = {locks = {}}
 for _ = 1, 44 do screen.update() end
 assert(restarted == 0, 'the wait starts again once it is quiet')
-screen.update(); assert(restarted == 1 and approvals == 1)
+screen.update(); assert(restarted == 1 and approvals == 1 and challenged == 0)
+-- A challenge restarts as a challenge: the session has forgotten it is one by
+-- the time the menu is ready, so what was left behind is what comes back.
+active, session.phase, session.challenge = run, 'running', true
+G.OVERLAY_MENU = {}
+G.FUNCS.mprpl_restart()
+active, session.phase, session.challenge = nil, 'idle', nil
+for _ = 1, 60 do screen.update() end
+assert(challenged == 1 and restarted == 1, 'the challenge came back as a challenge, not as a replay')
+active, session.phase = run, 'finished'
+
 session.phase = 'finished'; screen.update()
 assert(overlays == 1 and G.OVERLAY_MENU.config.no_esc)
 screen.update(); assert(overlays == 1, 'open the finished summary once')
@@ -90,8 +115,8 @@ G.FUNCS.mprpl_replays(); screen.update(); assert(tabs == 0)
 active = nil; session.phase = 'idle'; screen.update(); assert(tabs == 1)
 active = run; session.phase = 'finished'; G.STAGE = G.STAGES.RUN
 G.FUNCS.mprpl_main_menu(); active = nil; session.phase = 'idle'; G.STAGE = G.STAGES.MAIN_MENU
-screen.update(); assert(tabs == 1 and restarted == 1 and stopped == 3)
+screen.update(); assert(tabs == 1 and restarted == 1 and stopped == 4)
 local won, marker = MP.UI.create_UIBox_mp_game_end(false)
 assert(won == false and marker == 'native' and native == 1, 'ordinary games keep their result screen')
-G.FUNCS.mprpl_restart(); assert(stopped == 3, 'stale buttons do nothing')
+G.FUNCS.mprpl_restart(); assert(stopped == 4, 'stale buttons do nothing')
 print('PASS: replay results, sprites, partial logs, duplicate-click protection, asynchronous navigation and native-game isolation')

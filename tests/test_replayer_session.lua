@@ -485,6 +485,80 @@ session.on_main_menu()
 driver.perform = emitting
 performed, records = {}, {}
 
+-- Challenge: the same lobby and run, with the log's own player as the nemesis
+-- and this player at the controls from the first frame.
+local was_perform = driver.perform
+driver.perform = function(entry) performed[#performed + 1] = entry.text; return 'done' end
+performed, records = {}, {}
+session.runs[session.index].pvp = {{first = 'host',
+    enemy = {{score = '5000', left = 0}}, player = {{score = '700', left = 1}, {score = '4200', left = 0}}}}
+G.STAGE = 1
+session.challenge_listed(session.runs[session.index])
+assert(session.challenge and session.unlocked, 'the player has the controls from the start')
+assert(session.text:find('Challenge joining lobby', 1, true), session.text)
+session.on_main_menu()
+now = now + 2
+session.update(0.1)
+G.STAGE = 2
+G.GAME = {pseudorandom = {seed = '*TESTSEED'}, selected_back = {effect = {center = {key = 'b_red'}}}}
+session.on_run_started()
+assert(session.phase == 'running', session.text)
+channel.items = {}
+MP.GAME = {lives = 4, enemy = {lives = 4}, ready_blind = true}
+MP.is_pvp_boss = function() return false end
+for _ = 1, 10 do now = now + 10; session.update(0.1) end
+assert(#performed == 0, 'the log is not played out: the player plays it')
+assert(sent_last().action == 'startBlind' and sent_last().firstPlayer == 'host')
+
+-- The nemesis scores what the log's player scored, hand by hand.
+MP.is_pvp_boss = function() return true end
+G.GAME.current_round, G.GAME.chips = {hands_left = 2}, 0
+session.update(0.1)
+assert(not MP.GAME.enemy.info_received, 'nothing before the first hand')
+G.GAME.current_round.hands_left = 1
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '700', 'the log player is the opponent, not the log opponent')
+G.GAME.current_round.hands_left, G.GAME.chips = 0, 100
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '4200' and MP.GAME.lives == 3 and MP.GAME.enemy.lives == 4,
+    'losing to the log costs the challenger a life')
+-- A PvP blind past the last one the log holds still runs, with the nemesis
+-- carrying on from the best they managed: 4200 here, multiplied by their own
+-- blind-to-blind growth, and by 1.75 when there is none to measure.
+MP.is_pvp_boss = function() return false end
+MP.GAME.ready_blind = false
+session.update(0.1)
+MP.GAME.ready_blind = true
+session.update(0.1)
+assert(sent_last().action == 'startBlind', 'the blind starts even with no record left')
+MP.is_pvp_boss = function() return true end
+-- action_start_blind clears the opponent's score as the blind opens.
+MP.GAME.enemy.info_received, MP.GAME.enemy.score = false, MP.INSANE_INT.empty()
+G.GAME.current_round, G.GAME.chips = {hands_left = 0}, 10
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '7350', 'one blind of growth on their best: ' .. MP.GAME.enemy.score_text)
+assert(MP.GAME.lives == 2 and MP.GAME.enemy.lives == 4, 'and it still has to be beaten')
+
+-- Every blind past the log climbs again, so a challenge cannot run forever.
+MP.is_pvp_boss = function() return false end
+MP.GAME.ready_blind = false
+session.update(0.1)
+MP.GAME.ready_blind = true
+session.update(0.1)
+MP.is_pvp_boss = function() return true end
+MP.GAME.enemy.info_received, MP.GAME.enemy.score = false, MP.INSANE_INT.empty()
+G.GAME.current_round, G.GAME.chips = {hands_left = 0}, 20000
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '12863', 'and again on the next, rounded the same way anywhere: ' .. MP.GAME.enemy.score_text)
+assert(MP.GAME.enemy.lives == 3 and MP.GAME.lives == 2, 'beating the climb still takes one of their lives')
+
+session.stop()
+session.on_main_menu()
+assert(not session.challenge, 'and the challenge is over with the session')
+driver.perform = was_perform
+performed, records = {}, {}
+G.GAME.current_round, G.GAME.chips, MP.is_pvp_boss = nil, nil, nil
+
 -- Without Balatro Observer's Action Recorder the replay runs just the same.
 local saved_recorder = BalatroActionRecorder
 BalatroActionRecorder = nil
@@ -925,7 +999,7 @@ for _, state in ipairs({G.STATES.SELECTING_HAND, G.STATES.SHOP, G.STATES.SMODS_B
     session.on_main_menu()
 end
 -- Normal playback advances the opponent blind, and Hand Back restores it.
-local original_entries = session.runs[1].entries
+local original_entries, original_pvp = session.runs[1].entries, session.runs[1].pvp
 local function message(action, fields)
     fields = fields or {}; fields.action = action
     return {kind = 'message', action = action, fields = fields}
@@ -942,6 +1016,13 @@ session.runs[1].entries = {
     message('startBlind', {firstPlayer = 'guest'}),
     message('enemyInfo', {score = '5000', handsLeft = 0}),
     message('endPvP'),
+}
+-- The PvP blinds the parser reads out of those lines, both sides of each.
+session.runs[1].pvp = {
+    {first = 'guest', enemy = {{score = '200', left = 0}}, player = {{score = '150', left = 0}}},
+    {first = 'host', enemy = {{score = '900', left = 1}, {score = '1800', left = 0}},
+        player = {{score = '400', left = 1}, {score = '2500', left = 0}}},
+    {first = 'guest', enemy = {{score = '5000', left = 0}}, player = {{score = '9000', left = 0}}},
 }
 begin()
 G.STATE, G.STATE_COMPLETE = G.STATES.SELECTING_HAND, true
@@ -963,7 +1044,7 @@ for attempt = 1, 2 do
 end
 session.on_main_menu()
 MP.is_pvp_boss = nil
-session.runs[1].entries = original_entries
+session.runs[1].entries, session.runs[1].pvp = original_entries, original_pvp
 print('PASS: later PvP takeover selects the current opponent record and rollback restores that selection')
 
 begin()

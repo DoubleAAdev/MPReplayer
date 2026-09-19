@@ -22,6 +22,8 @@ function UIBox_button(args)
     return {n = G.UIT.C, config = {button = args.button, minw = args.minw, minh = args.minh, colour = args.colour}, nodes = {
         {n = G.UIT.T, config = {text = args.label[1], scale = args.scale}}}}
 end
+local tooltips = 0
+function create_popup_UIBox_tooltip(tooltip) tooltips = tooltips + 1; return {built = tooltip} end
 function create_UIBox_generic_options(args) return args end
 G.FUNCS.overlay_menu = function(args) G.OVERLAY_MENU = args.definition end
 local mod = {id = 'MPReplayer'}
@@ -344,6 +346,18 @@ assert(boxes[5].REMOVED and label.value == 1 and not session.hold and not sessio
     'the button leaves with the replay; speed, pause and the controls reset')
 session.update, G.STAGE, G.deck = real_update, G.STAGES.MAIN_MENU, nil
 print('PASS: fast forward arrows step and wrap between 0.5x and 512x, and each frame runs that many updates')
+
+-- The Challenge button hangs its own hover box on the element: UIElement:hover
+-- rewrites h_popup_config to 'tm' whenever it renders a config.tooltip, which
+-- put the box over Start Replay above it.
+local hovered = {config = {}}
+G.FUNCS.mprpl_challenge_popup(hovered)
+assert(hovered.config.h_popup.built.title == 'Challenge' and tooltips == 1)
+assert(hovered.config.h_popup_config.align == 'cr' and hovered.config.h_popup_config.parent == hovered,
+    'the box sits to the right of the button it belongs to')
+G.FUNCS.mprpl_challenge_popup(hovered)
+assert(tooltips == 1, 'and is built once, not every frame it is hovered')
+print('PASS: the Challenge hover box is built once and placed beside its button')
 
 assert(#mod.extra_tabs() == 1)
 session.phase = 'failed'
