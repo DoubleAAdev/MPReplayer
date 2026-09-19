@@ -78,6 +78,9 @@ return function(session, show_replays, after_start)
         rows[#rows + 1] = row({button('Restart Replay', 'mprpl_restart', G.C.GREEN),
             {n = G.UIT.C, config = {minw = 0.15}}, button('Replays', 'mprpl_replays', G.C.BLUE)})
         rows[#rows + 1] = row({button('Main Menu', 'mprpl_main_menu', G.C.RED, 6.9)})
+        if session.unlocked then
+            rows[#rows + 1] = row({button('Hand Back', 'mprpl_control', G.C.ORANGE, 6.9)})
+        end
         return create_UIBox_generic_options{no_back = true, no_esc = true, contents = rows}
     end
     local function leave(destination)
@@ -131,6 +134,7 @@ return function(session, show_replays, after_start)
         end
         local run = session.active_run()
         if not run then shown = nil; return end
+        if session.phase == 'running' and not G.OVERLAY_MENU then shown = nil end
         -- Partial logs may finish without generating Multiplayer's game-over UI.
         if session.phase == 'finished' and shown ~= run and not G.OVERLAY_MENU then
             shown = run

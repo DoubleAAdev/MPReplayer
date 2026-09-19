@@ -22,7 +22,19 @@ return function(log, driver, JSON, deps)
     local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1, unlocked = false}
     local directory = 'mp_replayer'
     local clock = deps.clock
-    local session, saved
+    local session, saved, checkpoint
+    -- Runtime tables can contain shared/cyclic references. Native copy_table
+    -- also recursively copies class metatables, which can point to themselves.
+    local function copy_state(value, seen, cull)
+        if type(value) ~= 'table' then return value end
+        if cull and value.is and value:is(Object) then return '"MANUAL_REPLACE"' end
+        seen = seen or {}
+        if seen[value] then return seen[value] end
+        local result = {}
+        seen[value] = result
+        for key, item in pairs(value) do result[key] = copy_state(item, seen, cull) end
+        return setmetatable(result, not cull and getmetatable(value) or nil)
+    end
     -- Actions the game writes by itself when a delivered message arrives.
     local auto_ops = {net_asteroid = true, net_pizza = true, net_magnet = true, net_phantom_add = true, net_phantom_remove = true}
     -- Messages a replay may still send: none change a game.
@@ -34,6 +46,7 @@ return function(log, driver, JSON, deps)
     local function recorder() return BalatroActionRecorder end
 
     local function write_status()
+        if checkpoint then return end
         local state = {phase = S.phase, status = S.text, step = session and session.done or 0,
             total = session and session.run.actions or 0, recording = recorder() and recorder().path or nil}
         if session and session.failure then state.failure = session.failure end
@@ -78,6 +91,7 @@ return function(log, driver, JSON, deps)
 
     local function fail(message)
         if not session or session.failure then return end
+        S.takeover = nil
         local entry = session.entries[session.cursor]
         local where = entry and entry.kind == 'action' and (' at action ' .. entry.seq .. ' (' .. entry.text .. ')') or ''
         session.failure = {step = session.done, message = clean(message), action = entry and entry.text or nil, line = entry and entry.line or nil}
@@ -136,10 +150,8 @@ return function(log, driver, JSON, deps)
     -- runs. set_ante_key is the game's bookkeeping, not an action.
     function S.record(op, args, human)
         local original = saved and saved.record
-        -- S.unlocked: the player has the controls, so what the game reports is
-        -- their own move. Log it the way a normal game does rather than failing
-        -- the replay over the difference.
-        if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure or S.unlocked then
+        if checkpoint or S.unlocked then return end
+        if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure then
             return original(op, args, human)
         end
         if op == 'set_ante_key' then return end
@@ -527,8 +539,14 @@ return function(log, driver, JSON, deps)
         -- Steamodded sends every log line through this one function, and
         -- Multiplayer names itself as the logger on all of its lines.
         saved.console = sendMessageToConsole
+        saved.print, saved.end_run = print, MP.RLOG.end_run
+        print = function(...) if not checkpoint then return saved.print(...) end end
+        MP.RLOG.end_run = function(...)
+            if not checkpoint and saved.end_run then return saved.end_run(...) end
+        end
         if saved.console then
             sendMessageToConsole = function(level, logger, message)
+                if checkpoint or S.unlocked then return end
                 if logger == 'IdolAlgo' then pcall(check_idol, message) end
                 if logger ~= 'MULTIPLAYER' then return saved.console(level, logger, message) end
             end
@@ -570,6 +588,9 @@ return function(log, driver, JSON, deps)
 
     local function cleanup()
         if not saved then return end
+        checkpoint = nil
+        S.unlocked, S.takeover, S.returning, S.restoring = false, nil, nil, nil
+        print, MP.RLOG.end_run = saved.print, saved.end_run
         Client.send = saved.send
         MP.RLOG.record = saved.record
         if MP.STATS then MP.STATS.record_match = saved.record_match end
@@ -593,6 +614,7 @@ return function(log, driver, JSON, deps)
 
     function S.stop()
         if S.phase == 'idle' then return end
+        S.takeover, S.returning, S.restoring = nil, nil, nil
         S.phase = 'stopped'
         S.status('Replay stopped by the player - ' .. (session and progress() or ''))
         if G.STAGE == G.STAGES.RUN then
@@ -621,6 +643,7 @@ return function(log, driver, JSON, deps)
 
     -- Game.start_run, after the run exists.
     function S.on_run_started()
+        if S.restoring then return end
         if not session then return end
         if S.phase == 'running' then return fail('a new run started during the replay') end
         if S.phase ~= 'starting' then return end
@@ -658,9 +681,113 @@ return function(log, driver, JSON, deps)
         return nil
     end
 
+    function S.control()
+        if S.restoring or S.returning or S.phase == 'stopped' or S.phase == 'idle' then return end
+        if checkpoint then
+            S.unlocked, S.returning = false, true
+        elseif S.phase == 'running' then
+            S.takeover = not S.takeover
+        end
+    end
+
+    local function pack_screen()
+        for _, name in ipairs({'TAROT_PACK', 'PLANET_PACK', 'SPECTRAL_PACK', 'BUFFOON_PACK', 'STANDARD_PACK', 'SMODS_BOOSTER_OPENED'}) do
+            if G.STATES[name] and G.STATE == G.STATES[name] then return true end
+        end
+    end
+
+    local function take_over()
+        -- Use the game's serializer, but discard its disk-write request.
+        local disabled, handler, pending, culled = G.F_NO_SAVING, G.FILE_HANDLER, G.ARGS.save_run, G.culled_table
+        local native_cull = recursive_table_cull
+        local state, pack = G.STATE, pack_screen()
+        -- Native saving skips packs; their areas serialize normally. Rebuild
+        -- their UI ourselves so Continue never reopens or rerolls the booster.
+        if pack then G.STATE = G.STATES.SELECTING_HAND end
+        G.F_NO_SAVING, G.FILE_HANDLER, G.culled_table = false, {}, nil
+        recursive_table_cull = function(value) return copy_state(value, nil, true) end
+        local ok, err = pcall(save_run)
+        recursive_table_cull = native_cull
+        local game = G.culled_table
+        G.STATE = state
+        G.F_NO_SAVING, G.FILE_HANDLER, G.ARGS.save_run, G.culled_table = disabled, handler, pending, culled
+        assert(ok, 'Could not save checkpoint: ' .. tostring(err))
+        assert(game, 'The current screen cannot be saved')
+        game.STATE = state
+        local replay = {}
+        for key, value in pairs(session) do replay[key] = value end
+        checkpoint = {game = game, multiplayer = copy_state(MP.GAME), replay = replay,
+            random = love.math.getRandomState(), hold = S.hold, text = S.text,
+            after_pvp = G.after_pvp, pack = pack, booster = booster_obj,
+            blind_pvp = G.GAME.blind and G.GAME.blind.pvp,
+            opened = pack and SMODS.OPENED_BOOSTER,
+            opened_ability = pack and SMODS.OPENED_BOOSTER and copy_state(SMODS.OPENED_BOOSTER.ability)}
+        S.unlocked, S.takeover = true, nil
+    end
+
+    local function restore_pack()
+        booster_obj = checkpoint.booster
+        if checkpoint.opened then
+            -- This card already dissolved when the pack opened; retain it for
+            -- the native pack UI, without adding/removing a gameplay card.
+            SMODS.OPENED_BOOSTER = checkpoint.opened
+            SMODS.OPENED_BOOSTER.ability = copy_state(checkpoint.opened_ability)
+        end
+        G.STATE = checkpoint.game.STATE
+        local builders = {TAROT_PACK = create_UIBox_arcana_pack, PLANET_PACK = create_UIBox_celestial_pack,
+            SPECTRAL_PACK = create_UIBox_spectral_pack, BUFFOON_PACK = create_UIBox_buffoon_pack,
+            STANDARD_PACK = create_UIBox_standard_pack}
+        local definition
+        if G.STATE == G.STATES.SMODS_BOOSTER_OPENED then
+            definition = booster_obj:create_UIBox()
+            booster_obj:ease_background_colour()
+        else
+            for name, build in pairs(builders) do
+                if G.STATE == G.STATES[name] then definition = build(); break end
+            end
+            ease_background_colour_blind(G.STATE)
+        end
+        G.booster_pack = UIBox{definition = assert(definition, 'Cannot restore this booster UI'),
+            config = {align = 'tmi', offset = {x = 0, y = -2.2}, major = G.hand, bond = 'Weak'}}
+        G.pack_cards:load(copy_state(checkpoint.game.cardAreas.pack_cards))
+        if G.shop then G.shop.alignment.offset.y = G.ROOM.T.y + 11 end
+        if G.buttons then G.buttons:remove(); G.buttons = nil end
+        G.STATE_COMPLETE = true
+    end
+
+    local function hand_back()
+        local game = copy_state(checkpoint.game)
+        if checkpoint.pack then
+            game.STATE = game.GAME.PACK_INTERRUPT or G.STATES.SHOP
+            game.cardAreas.pack_cards = nil
+        end
+        S.restoring, S.returning = true, nil
+        if G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
+        G:delete_run()
+        -- Discard even no_delete callbacks created by the trial run.
+        for name in pairs(G.E_MANAGER.queues) do G.E_MANAGER.queues[name] = {} end
+        local channel = deps.channel('networkToUi')
+        while channel:pop() do end
+        G.TAROT_INTERRUPT, G.action = nil, nil
+        MP.GAME = copy_state(checkpoint.multiplayer)
+        G.after_pvp = checkpoint.after_pvp
+        G:start_run({savetext = game})
+        if G.GAME.blind then G.GAME.blind.pvp = checkpoint.blind_pvp end
+        session = {}
+        for key, value in pairs(checkpoint.replay) do session[key] = value end
+        S.phase, S.hold = 'running', checkpoint.hold
+        session.signature, session.signature_at, session.waiting_since = nil, nil, nil
+        session.consumed, session.delivered, session.tick = clock(), clock(), clock()
+    end
+
     local function deliver(entry)
         deps.channel('networkToUi'):push(deps.encode(entry.fields))
         session.delivered = clock()
+        -- Playback must advance the same opponent-blind cursor as Take Over.
+        -- Trial results advance it in free_play, so count only logged events.
+        if entry.kind == 'message' and entry.action == 'endPvP' then
+            session.pvp_index = session.pvp_index + 1
+        end
     end
 
     -- Multiplayer keeps a score as coefficient and exponent, not a number.
@@ -764,6 +891,29 @@ return function(log, driver, JSON, deps)
     function S.update(dt)
         if not session then return end
         local now = clock()
+        if S.returning then
+            local ok, err = pcall(hand_back)
+            if not ok then
+                S.returning, S.restoring, S.unlocked = nil, nil, true
+                fail(err)
+            end
+            return
+        end
+        if S.restoring then
+            if busy() or now - session.consumed < SETTLE then return end
+            local ok, err = pcall(function() if checkpoint.pack then restore_pack() end end)
+            if not ok then
+                S.restoring, S.unlocked = nil, true
+                fail(err)
+                return
+            end
+            G.GAME.pseudorandom = copy_state(checkpoint.game.GAME.pseudorandom)
+            love.math.setRandomState(checkpoint.random)
+            S.text = checkpoint.text
+            wrap(S.text)
+            checkpoint, S.restoring = nil, nil
+            return
+        end
         if S.phase == 'joining' then
             if not session.rejoined and G.F_NO_SAVING then session.rejoined = now end
             if not session.rejoined then
@@ -839,6 +989,15 @@ return function(log, driver, JSON, deps)
             end
             session.hand_pending = nil
         end
+        -- Finish the current animation, then save before issuing another move.
+        if S.takeover and (G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP
+            or G.STATE == G.STATES.BLIND_SELECT or pack_screen()) and not session.issued then
+            if paused() or busy() or now - (session.consumed or 0) < SETTLE
+                or now - (session.delivered or 0) < SETTLE then return end
+            if pack_screen() and (not G.pack_cards or not G.pack_cards.cards or #G.pack_cards.cards == 0) then return end
+            take_over()
+            return
+        end
         local entry = session.entries[session.cursor]
         if not entry then return finish() end
         if entry.kind == 'message' then
@@ -861,7 +1020,7 @@ return function(log, driver, JSON, deps)
         if entry.auto then return waiting('the game to produce "' .. entry.text .. '"') end
         -- Paused from the speed control: the next move waits once the game has
         -- settled. A move logged while the game resolves still happens on time.
-        if S.hold and not busy() then
+        if S.hold and not S.takeover and not busy() then
             session.waiting_since = nil
             return
         end
