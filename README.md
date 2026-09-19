@@ -9,7 +9,7 @@ A Steamodded mod that replays a Multiplayer game from its Lovely log, action by 
 
 ## Install
 
-Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts/install.ps1`. Restart Balatro.
+Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts/install.ps1`.
 
 ## Use
 
@@ -19,6 +19,8 @@ Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts
 4. Ending the replay returns to the main menu and restores normal Multiplayer play.
 
 While a replay is active it's read-only: card dragging, selection, sorting, playing/discarding, purchases, sales and consumable use are all blocked. Menus, settings, and hover inspection still work.
+
+**Take Over** saves an in-memory checkpoint once the current action settles, then lets you try your own moves. **Hand Back** restores the cards, money, RNG, Multiplayer state and replay position, including an open booster pack. Trial moves aren't logged, and no checkpoint file is created. Hand Back is also available if your trial reaches game over.
 
 ## How it works
 

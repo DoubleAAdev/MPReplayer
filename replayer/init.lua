@@ -200,7 +200,7 @@ return function(mod, JSON)
     local speeds = {0.5, 1, 1.5, 2, 4, 8, 16, 32, 64, 128, 256, 512}
     local default_speed = 2
     local speed = {value = speeds[default_speed], label = speeds[default_speed] .. 'x', index = default_speed}
-    local speed_box, speed_deck, speed_hold, speed_free
+    local speed_box, speed_deck, speed_hold, speed_free, speed_wait
     local update_cost = 0.001
     local function set_speed(index)
         speed.index = (index - 1) % #speeds + 1
@@ -212,12 +212,13 @@ return function(mod, JSON)
     -- Pause holds the replay's next move; the game itself keeps running.
     G.FUNCS.mprpl_speed_pause = function() session.hold = not session.hold end
     -- Take Over halts the replay and gives every control back to the player.
-    G.FUNCS.mprpl_control = function() session.unlocked = not session.unlocked end
+    G.FUNCS.mprpl_control = function() protect(session.control, true) end
     local function sync_speed_button()
         local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
+        local waiting = session.takeover or session.returning or session.restoring
         -- The pause button's label and colour are fixed per box, so a toggle rebuilds it.
         if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED
-            or speed_hold ~= session.hold or speed_free ~= session.unlocked) then
+            or speed_hold ~= session.hold or speed_free ~= session.unlocked or speed_wait ~= waiting) then
             if not speed_box.REMOVED then speed_box:remove() end
             speed_box, speed_deck = nil, nil
         end
@@ -226,6 +227,7 @@ return function(mod, JSON)
             session.hold, session.unlocked = false, false
         elseif not speed_box then
             speed_deck, speed_hold, speed_free = G.deck, session.hold, session.unlocked
+            speed_wait = waiting
             -- The panel is shaded like the card areas beside it, with a label over
             -- an inset value from the run HUD and orange buttons like Options.
             local dyn = G.C.DYN_UI or {}
@@ -251,7 +253,7 @@ return function(mod, JSON)
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
                         {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_control', colour = speed_free and G.C.RED or G.C.ORANGE, r = 0.08,
                             minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
-                            text(speed_free and 'Hand Back' or 'Take Over', 0.28)}}}}}}}},
+                            text(speed_wait and 'Waiting...' or speed_free and 'Hand Back' or 'Take Over', 0.28)}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -0.85}, major = G.deck, bond = 'Weak'}}
         end
     end

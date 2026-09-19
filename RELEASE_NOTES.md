@@ -1,8 +1,9 @@
-# MP Replayer 3.1.1
+# MP Replayer 3.1.0
 
-- Add a Restart Replay button to the pause menu, under End Replay. It is that button's own row copied, so the two match in size, colour and font whatever the menu around them is built from.
-- Stop asking for the same confirmation twice. The approval given for a mod difference was spent by the start it was given for, and the restart cleared it as well, so restarting a replay asked the question the player had just answered. It is kept now, and a fresh Start, a changed selection or a changed set of loaded mods still ask.
-- Wait for the main menu to settle before restarting. Multiplayer leaves the lobby over several frames and resets the lobby options on its way out, so a restart begun in that window had the replay's deck and rules wiped and the run started on the default deck.
-- Lower the speed panel above the deck.
+- Try your own moves with Take Over. Hand Back restores an in-memory checkpoint and resumes the replay, including open booster packs and trials that reach game over.
+- Play PvP blinds against the recorded opponent scores for the current blind. Trial moves produce no replay logs or checkpoint files.
+- Add 0.5x and 1.5x playback speeds.
+- Add Restart Replay to the pause menu, retain confirmed mod compatibility checks, and wait for lobby cleanup before restarting.
+- Fix run startup after an interrupted consumable and adjust the speed panel position.
 
-Validation: ten Lua suites. Restart Balatro to load the update.
+Validation: all 10 Lua suites passed; takeover and rollback tested in game.
