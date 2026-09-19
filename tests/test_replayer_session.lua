@@ -419,9 +419,9 @@ for _ = 1, 10 do now = now + 10; session.update(0.1) end
 assert(session.phase == 'running' and #performed == 0 and #channel.items == 0,
     'nothing is performed and nothing from the log is delivered while the player plays')
 
--- A move of the player's own is logged as a normal game logs it, not checked.
+-- Trial moves are neither recorded nor checked against the replay.
 MP.RLOG.record('play', {{3, 4}}, 'action:play,cards:3.4')
-assert(session.phase == 'running' and #records == 1, "the player's own move never fails the replay")
+assert(session.phase == 'running' and #records == 0, 'trial moves must not enter the log')
 
 -- Ready starts the PvP blind, with the log's first player.
 MP.GAME.ready_blind = true
@@ -817,6 +817,167 @@ session.end_screen_reached()
 assert(session.phase == 'finished')
 session.on_main_menu()
 print('PASS: native completion retains the exact replay and early game-over cannot report successful playback')
+
+-- Checkpoints use native serialization in memory, including a partially used pack.
+function copy_table(value)
+    if type(value) ~= 'table' then return value end
+    local result = {}; for k, v in pairs(value) do result[k] = copy_table(v) end
+    return result
+end
+local rng = 'original'
+love.math = {getRandomState = function() return rng end, setRandomState = function(value) rng = value end}
+G.STATES.SHOP, G.STATES.BLIND_SELECT, G.STATES.SMODS_BOOSTER_OPENED = 20, 21, 22
+G.ARGS, G.FILE_HANDLER, G.F_NO_SAVING = {save_run = 'previous'}, {settings = true}, true
+local native_handler = G.FILE_HANDLER
+recursive_table_cull = copy_table
+local native_cull = recursive_table_cull
+function save_run()
+    assert(not G.F_NO_SAVING and G.STATE ~= G.STATES.SMODS_BOOSTER_OPENED)
+    G.culled_table = recursive_table_cull({GAME = G.GAME, STATE = G.STATE,
+        cardAreas = {hand = G.hand, pack_cards = G.pack_cards}})
+    G.ARGS.save_run, G.FILE_HANDLER.run = G.culled_table, true
+end
+function G:delete_run()
+    G.hand, G.pack_cards, G.GAME = nil, nil, {}
+end
+function G:start_run(args)
+    G.GAME, G.STATE, G.STATE_COMPLETE = args.savetext.GAME, args.savetext.STATE, true
+    G.hand = args.savetext.cardAreas.hand
+    rng = 'loading changed rng'
+    session.on_run_started()
+end
+local pack_builds = 0
+booster_obj = {create_UIBox = function()
+    pack_builds = pack_builds + 1
+    G.pack_cards = {load = function(self, data) self.cards = data.cards end}
+    return {}
+end, ease_background_colour = function() end}
+UIBox = function(args) return {definition = args.definition} end
+session.runs[1].entries = {{kind='action',op='reroll',args={},text='reroll',seq=1,line=10}}
+session.runs[1].actions = 1
+driver.perform = function(entry) MP.RLOG.record('reroll'); return 'done' end
+for _, state in ipairs({G.STATES.SELECTING_HAND, G.STATES.SHOP, G.STATES.SMODS_BOOSTER_OPENED}) do
+    begin()
+    G.STATE, G.STATE_COMPLETE = state, true
+    G.GAME.dollars, G.GAME.pseudorandom = 17, {seed = 'TESTSEED', next = 0.125}
+    G.GAME.blind = {pvp = true}
+    G.GAME.self = G.GAME
+    SMODS.OPENED_BOOSTER = {ability = {extra = 3}}
+    G.GAME.PACK_INTERRUPT, G.GAME.pack_choices = G.STATES.SHOP, 1
+    G.hand = {cards = {{id = 'AS'}, {id = 'KH'}}}
+    G.pack_cards = state == G.STATES.SMODS_BOOSTER_OPENED and {cards = {{id = 'Mercury'}, {id = 'Hermit'}}} or nil
+    MP.GAME = {lives = 3, enemy = {lives = 2}, ready_blind = false}
+    local numeric_class = {}; numeric_class.__index = numeric_class
+    MP.GAME.score = setmetatable({value = 42}, numeric_class)
+    MP.GAME.self, MP.GAME.shared_enemy = MP.GAME, MP.GAME.enemy
+    session.hold = false
+    rng = 'original'
+    local cursor = session.debug_snapshot().cursor
+    session.control()
+    G.E_MANAGER.queues.base = {{blocking = true}}
+    now = now + 1; session.update(.1)
+    assert(not session.unlocked and session.takeover, 'wait for animation before taking the snapshot')
+    G.E_MANAGER.queues.base = {}
+    now = now + 1; session.update(.1)
+    assert(session.unlocked and not session.takeover)
+    assert(recursive_table_cull == native_cull, 'restore the native serializer immediately')
+    assert(G.F_NO_SAVING and G.FILE_HANDLER == native_handler and not G.FILE_HANDLER.run and G.ARGS.save_run == 'previous')
+    local before_log, before_records, status = #lovely, #records, writes['mp_replayer/status.json']
+    G.GAME.dollars, G.GAME.pseudorandom.next = 0, .999
+    G.hand.cards[1].id, MP.GAME.lives = '2C', 0
+    MP.GAME.score.value = 99
+    G.GAME.blind.pvp = false
+    SMODS.OPENED_BOOSTER = {ability = {extra = 9}}
+    if G.pack_cards then G.pack_cards.cards[1].id = 'Moon' end
+    rng = 'trial'
+    MP.RLOG.record('sell', {4, 1})
+    sendDebugMessage('IDOL_ROLL::wrong', 'IdolAlgo')
+    sendDebugMessage('trial', 'SomeOtherMod')
+    session.end_screen_reached()
+    assert(session.phase == 'finished' and #lovely == before_log and #records == before_records)
+    assert(writes['mp_replayer/status.json'] == status, 'no trial status is written')
+    channel.items = {'stale trial message'}
+    G.E_MANAGER.queues.base = {{no_delete = true, func = function() error('stale trial callback') end}}
+    session.control(); session.update(.1)
+    assert(session.restoring and not session.unlocked and session.phase == 'running')
+    assert(#channel.items == 0 and #G.E_MANAGER.queues.base == 0)
+    now = now + 1; session.update(.1)
+    assert(not session.restoring and G.STATE == state)
+    assert(G.GAME.dollars == 17 and G.hand.cards[1].id == 'AS' and MP.GAME.lives == 3 and MP.GAME.enemy.lives == 2)
+    assert(G.GAME.pseudorandom.next == .125 and rng == 'original')
+    assert(G.GAME.blind.pvp == true)
+    assert(G.GAME.self == G.GAME and MP.GAME.self == MP.GAME and MP.GAME.shared_enemy == MP.GAME.enemy)
+    assert(MP.GAME.score.value == 42 and getmetatable(MP.GAME.score) == numeric_class)
+    assert(session.debug_snapshot().cursor == cursor and session.phase == 'running')
+    if state == G.STATES.SMODS_BOOSTER_OPENED then
+        assert(pack_builds == 1 and G.pack_cards.cards[1].id == 'Mercury' and G.GAME.pack_choices == 1)
+        assert(SMODS.OPENED_BOOSTER.ability.extra == 3)
+    end
+    -- A second checkpoint replaces the first and restores its own state.
+    G.GAME.dollars = 23
+    session.control(); now = now + 1; session.update(.1)
+    assert(session.unlocked)
+    G.GAME.dollars = 1
+    session.control(); session.update(.1); now = now + 1; session.update(.1)
+    assert(G.GAME.dollars == 23 and not session.restoring)
+    for _ = 1, 5 do now = now + 1; session.update(.1) end
+    assert(session.phase == 'finished' and session.progress() == '1/1', session.text)
+    session.on_main_menu()
+end
+-- Normal playback advances the opponent blind, and Hand Back restores it.
+local original_entries = session.runs[1].entries
+local function message(action, fields)
+    fields = fields or {}; fields.action = action
+    return {kind = 'message', action = action, fields = fields}
+end
+session.runs[1].entries = {
+    message('startBlind', {firstPlayer = 'guest'}),
+    message('enemyInfo', {score = '200', handsLeft = 0}),
+    message('endPvP'),
+    message('startBlind', {firstPlayer = 'host'}),
+    {kind='action',op='reroll',args={},text='reroll',seq=1,line=10},
+    message('enemyInfo', {score = '900', handsLeft = 1}),
+    message('enemyInfo', {score = '1800', handsLeft = 0}),
+    message('endPvP'),
+    message('startBlind', {firstPlayer = 'guest'}),
+    message('enemyInfo', {score = '5000', handsLeft = 0}),
+    message('endPvP'),
+}
+begin()
+G.STATE, G.STATE_COMPLETE = G.STATES.SELECTING_HAND, true
+G.GAME.current_round, G.GAME.chips = {hands_left = 2}, 99999
+MP.GAME = {lives = 4, enemy = {lives = 4}}
+MP.is_pvp_boss = function() return true end
+session.update(.1) -- The first blind ends and the second starts in playback.
+channel.items = {}
+for attempt = 1, 2 do
+    session.control(); now = now + 1; session.update(.1)
+    assert(session.unlocked)
+    session.update(.1)
+    G.GAME.current_round.hands_left = 1; session.update(.1)
+    assert(MP.GAME.enemy.score_text == '900', 'takeover must use the second blind, including after Hand Back')
+    G.GAME.current_round.hands_left = 0; session.update(.1)
+    assert(MP.GAME.enemy.score_text == '1800' and MP.GAME.enemy.lives == 3)
+    session.control(); session.update(.1); now = now + 1; session.update(.1)
+    assert(not session.restoring and G.GAME.current_round.hands_left == 2 and MP.GAME.enemy.lives == 4)
+end
+session.on_main_menu()
+MP.is_pvp_boss = nil
+session.runs[1].entries = original_entries
+print('PASS: later PvP takeover selects the current opponent record and rollback restores that selection')
+
+begin()
+G.STATE = G.STATES.SHOP
+save_run = function() error('save failed') end
+session.control(); now = now + 1
+local saved_ok, saved_error = pcall(session.update, .1)
+assert(not saved_ok and not session.unlocked)
+session.fail(saved_error)
+assert(not session.takeover and session.phase == 'failed', 'failure must clear the Waiting label')
+assert(recursive_table_cull == native_cull)
+assert(G.F_NO_SAVING and G.FILE_HANDLER == native_handler and G.ARGS.save_run == 'previous')
+session.on_main_menu()
+print('PASS: in-memory hand/shop/pack rollback, game-over return, repeat checkpoints, replay resume, no trial logs, and save failure cleanup')
 
 -- Steamodded minimum-build warning uses running metadata, not installed files.
 for _, version in ipairs({'1.0.0~BETA-1619z', '1.0.0~BETA-1620', '0.9.9'}) do

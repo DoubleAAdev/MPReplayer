@@ -322,6 +322,8 @@ G.FUNCS.mprpl_speed_pause()
 Game:update(0.016)
 assert(not session.hold and boxes[2].REMOVED and #boxes == 3 and pause_text(boxes[3]) == 'Pause')
 -- Take Over sits under Pause, the same size, and hands the controls to the player.
+-- Session checkpoint behaviour is covered by the session suite.
+session.control = function() session.unlocked = not session.unlocked end
 local function control_button(box) return box.args.definition.nodes[1].nodes[4].nodes[1] end
 local function control_text(box) return control_button(box).nodes[1].config.text end
 assert(control_button(boxes[3]).config.button == 'mprpl_control' and control_text(boxes[3]) == 'Take Over')
