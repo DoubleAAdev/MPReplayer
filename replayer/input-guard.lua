@@ -2,14 +2,17 @@
 -- game effects still call the original gameplay callbacks directly.
 return function(session)
     local M = {}
-    local function active() return session.phase ~= 'idle' end
+    -- A replay owns the screen until it is over; Take Over only lifts the input
+    -- lock inside it, so the menus stay the replay's own.
+    local function in_session() return session.phase ~= 'idle' end
+    local function active() return in_session() and not session.unlocked end
     M.active = active
     local safe_buttons = {
         options = true, exit_overlay_menu = true, mprpl_end = true, mprpl_restart = true, mprpl_replays = true, mprpl_main_menu = true,
         run_info = true, deck_info = true, change_tab = true, lobby_info = true,
         saturn_config = true, settings = true, mods_button = true,
         high_scores = true, your_collection = true, customize_deck = true,
-        mprpl_mod_prev = true, mprpl_mod_next = true, mprpl_speed_down = true, mprpl_speed_up = true, mprpl_speed_pause = true,
+        mprpl_mod_prev = true, mprpl_mod_next = true, mprpl_speed_down = true, mprpl_speed_up = true, mprpl_speed_pause = true, mprpl_control = true,
     }
     local exits = {mp_return_to_lobby = true, lobby_leave = true}
     local function is_card(node)
@@ -168,7 +171,7 @@ return function(session)
     -- Transform the final UI definition, including Multiplayer's patched pause
     -- menu and its game-over screen. One End Replay replaces both lobby exits.
     function M.rewrite(definition)
-        if not active() then return definition end
+        if not in_session() then return definition end
         local end_added = false
         local function visit(node)
             if type(node) ~= 'table' then return node end
@@ -206,7 +209,7 @@ return function(session)
         return visit(definition)
     end
     hook(UIBox, 'init', function(original, self, args, ...)
-        if active() and args and args.definition then args.definition = M.rewrite(args.definition) end
+        if in_session() and args and args.definition then args.definition = M.rewrite(args.definition) end
         return original(self, args, ...)
     end)
     return M

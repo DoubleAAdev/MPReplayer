@@ -193,32 +193,39 @@ return function(mod, JSON)
         end
         return text(fallback, 0.28)
     end
-    -- Fast forward: arrows above the deck halve or double the speed between
-    -- 1x and 512x, wrapping at either end. Balatro starts at most one blocking event per
-    -- update, so speed comes from more updates per frame, not a bigger dt.
-    local speed = {value = 1, label = '1x'}
-    local speed_box, speed_deck, speed_hold
+    -- Fast forward: arrows above the deck step through the speeds below,
+    -- wrapping at either end. Balatro starts at most one blocking event per
+    -- update, so above 1x the speed comes from more updates per frame; below 2x
+    -- there is nothing to repeat, so it comes from a scaled dt instead.
+    local speeds = {0.5, 1, 1.5, 2, 4, 8, 16, 32, 64, 128, 256, 512}
+    local default_speed = 2
+    local speed = {value = speeds[default_speed], label = speeds[default_speed] .. 'x', index = default_speed}
+    local speed_box, speed_deck, speed_hold, speed_free
     local update_cost = 0.001
-    local function set_speed(value)
-        speed.value = value
-        speed.label = value .. 'x'
+    local function set_speed(index)
+        speed.index = (index - 1) % #speeds + 1
+        speed.value = speeds[speed.index]
+        speed.label = speed.value .. 'x'
     end
-    G.FUNCS.mprpl_speed_down = function() set_speed(speed.value <= 1 and 512 or speed.value / 2) end
-    G.FUNCS.mprpl_speed_up = function() set_speed(speed.value >= 512 and 1 or speed.value * 2) end
+    G.FUNCS.mprpl_speed_down = function() set_speed(speed.index - 1) end
+    G.FUNCS.mprpl_speed_up = function() set_speed(speed.index + 1) end
     -- Pause holds the replay's next move; the game itself keeps running.
     G.FUNCS.mprpl_speed_pause = function() session.hold = not session.hold end
+    -- Take Over halts the replay and gives every control back to the player.
+    G.FUNCS.mprpl_control = function() session.unlocked = not session.unlocked end
     local function sync_speed_button()
         local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
         -- The pause button's label and colour are fixed per box, so a toggle rebuilds it.
-        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED or speed_hold ~= session.hold) then
+        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED
+            or speed_hold ~= session.hold or speed_free ~= session.unlocked) then
             if not speed_box.REMOVED then speed_box:remove() end
             speed_box, speed_deck = nil, nil
         end
         if not show then
-            set_speed(1)
-            session.hold = false
+            set_speed(default_speed)
+            session.hold, session.unlocked = false, false
         elseif not speed_box then
-            speed_deck, speed_hold = G.deck, session.hold
+            speed_deck, speed_hold, speed_free = G.deck, session.hold, session.unlocked
             -- The panel is shaded like the card areas beside it, with a label over
             -- an inset value from the run HUD and orange buttons like Options.
             local dyn = G.C.DYN_UI or {}
@@ -238,7 +245,13 @@ return function(mod, JSON)
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
                         {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed_pause', colour = speed_hold and G.C.GREEN or G.C.BLUE, r = 0.08,
                             minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
-                            text(speed_hold and 'Play' or 'Pause', 0.3)}}}}}}}},
+                            text(speed_hold and 'Play' or 'Pause', 0.3)}}}},
+                    -- Take Over sits under Pause, same size and padding. Red while the
+                    -- player holds the controls, because the replay cannot go on then.
+                    {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_control', colour = speed_free and G.C.RED or G.C.ORANGE, r = 0.08,
+                            minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
+                            text(speed_free and 'Hand Back' or 'Take Over', 0.28)}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
@@ -260,7 +273,7 @@ return function(mod, JSON)
         end
         -- ponytail: 50 ms of updates per frame; on a slow CPU the real speed
         -- stays below the label at the top settings.
-        local count = math.max(1, math.min(speed.value, math.floor(0.05 / update_cost)))
+        local count = math.max(1, math.min(math.floor(speed.value), math.floor(0.05 / update_cost)))
         local sub_dt = math.min(dt * speed.value / count, 0.05)
         local started, result, done = love.timer.getTime(), nil, 0
         repeat

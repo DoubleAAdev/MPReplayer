@@ -19,7 +19,7 @@
 -- back to it - so a replay never leaves behind a log that reads like another
 -- game. Progress is shown in the config tab and mp_replayer/status.json.
 return function(log, driver, JSON, deps)
-    local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1}
+    local S = {phase = 'idle', text = 'Replayer: choose Load Log to pick a Multiplayer log', index = 1, unlocked = false}
     local directory = 'mp_replayer'
     local clock = deps.clock
     local session, saved
@@ -136,7 +136,10 @@ return function(log, driver, JSON, deps)
     -- runs. set_ante_key is the game's bookkeeping, not an action.
     function S.record(op, args, human)
         local original = saved and saved.record
-        if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure then
+        -- S.unlocked: the player has the controls, so what the game reports is
+        -- their own move. Log it the way a normal game does rather than failing
+        -- the replay over the difference.
+        if not session or (S.phase ~= 'running' and S.phase ~= 'starting') or session.failure or S.unlocked then
             return original(op, args, human)
         end
         if op == 'set_ante_key' then return end
@@ -528,6 +531,31 @@ return function(log, driver, JSON, deps)
             end
         end
         session = {run = run, entries = run.entries, cursor = 1, done = 0, key = key, began = clock(), tick = 0}
+        -- Every PvP blind the log holds, in order: who reached it first and the
+        -- opponent's running score after each of their hands. Take Over plays
+        -- the player against these, one of their hands per hand played.
+        session.pvp, session.pvp_index = {}, 1
+        local blind
+        for _, entry in ipairs(run.entries) do
+            if entry.kind == 'message' then
+                if entry.action == 'startBlind' then
+                    blind = {first = entry.fields.firstPlayer, hands = {}}
+                    session.pvp[#session.pvp + 1] = blind
+                elseif entry.action == 'endPvP' then
+                    blind = nil
+                elseif blind and entry.action == 'enemyInfo' and entry.fields.score then
+                    -- enemyInfo repeats several times per hand, so the hand it
+                    -- reports is what separates one from the next; the last
+                    -- score for a hand is the one that hand finished on.
+                    local last = blind.hands[#blind.hands]
+                    if last and last.left == entry.fields.handsLeft then
+                        last.score = entry.fields.score
+                    else
+                        blind.hands[#blind.hands + 1] = {score = entry.fields.score, left = entry.fields.handsLeft}
+                    end
+                end
+            end
+        end
         session.code = m.lobby_code or 'REPLAY'
         -- Setting the code is what joining a lobby does; Multiplayer notices
         -- on its next update and re-enters the menu as a lobby member.
@@ -632,6 +660,83 @@ return function(log, driver, JSON, deps)
         session.delivered = clock()
     end
 
+    -- Multiplayer keeps a score as coefficient and exponent, not a number.
+    local function big(score)
+        if type(score) ~= 'table' then return to_big(tonumber(score) or 0) end
+        return to_big((score.coeffiocient or 0) * (10 ^ (score.exponent or 0)))
+    end
+
+    -- The opponent's hand as Multiplayer shows one: nothing until their first,
+    -- and their score, their hands left and a nudge of the PvP HUD after it.
+    local function show_enemy_hand(enemy, hand)
+        if not hand then return end
+        local score = MP.INSANE_INT.from_string(hand.score)
+        enemy.score, enemy.real_score = score, score
+        enemy.score_text = MP.INSANE_INT.to_string(score)
+        enemy.hands = hand.left or 0
+        enemy.info_received = true
+        if MP.UI and MP.UI.juice_up_pvp_hud then MP.UI.juice_up_pvp_hud() end
+    end
+
+    -- Take Over: the player plays their own game, so the replay performs
+    -- nothing and delivers nothing from the log. The PvP blind is the one
+    -- thing it still drives, against the scores read at the start.
+    local function free_play()
+        local record = session.pvp[session.pvp_index]
+        local enemy = ((MP.GAME or {}).enemy)
+        if not record or not enemy then return end
+        if not (MP.is_pvp_boss and MP.is_pvp_boss()) then
+            session.pvp_settled, session.pvp_hands = nil, nil
+            -- The player's Ready starts the blind, as the server's startBlind
+            -- does in a live game. Unreadying arms it again.
+            if not MP.GAME.ready_blind then
+                session.pvp_started = nil
+            elseif not session.pvp_started then
+                session.pvp_started = true
+                deliver({fields = {action = 'startBlind', firstPlayer = record.first}})
+            end
+            return
+        end
+        if session.pvp_settled then return end
+        local hands_left = (G.GAME.current_round or {}).hands_left or 0
+        if not session.pvp_hands then session.pvp_hands, session.pvp_hand = hands_left, 0 end
+        -- The opponent's score moves with the player's hands rather than
+        -- landing on their total: their score after as many hands as the
+        -- player has played, and never past the last hand they played. Counted
+        -- from the hands left, so a hand won mid-blind cannot drift it.
+        local played = math.min(#record.hands, math.max(0, session.pvp_hands - hands_left))
+        if played ~= session.pvp_hand then
+            session.pvp_hand = played
+            show_enemy_hand(enemy, played > 0 and record.hands[played] or nil)
+        end
+        -- Out of hands, once the last one has finished scoring: the higher of
+        -- the two scores takes the blind, and the loser is a life down. The
+        -- opponent played their whole blind, so it is their final score.
+        if hands_left >= 1 or busy() then return end
+        show_enemy_hand(enemy, record.hands[#record.hands])
+        local config, lost = MP.LOBBY.config or {}, big((G.GAME or {}).chips) < big(enemy.score)
+        if lost then
+            if config.gold_on_life_loss then
+                MP.GAME.comeback_bonus_given = false
+                MP.GAME.comeback_bonus = (MP.GAME.comeback_bonus or 0) + 1
+            end
+            MP.GAME.lives = (MP.GAME.lives or 0) - 1
+            if MP.UI and MP.UI.ease_lives then MP.UI.ease_lives(-1) end
+            if config.no_gold_on_round_loss and G.GAME.blind and G.GAME.blind.dollars then
+                G.GAME.blind.dollars = 0
+            end
+        else
+            enemy.lives = (enemy.lives or 0) - 1
+            if enemy.lives <= 0 then MP.GAME.won = true end
+        end
+        session.pvp_settled, session.pvp_index = true, session.pvp_index + 1
+        -- A life count at zero ends the run rather than the blind: Multiplayer
+        -- runs its own game over, and the replay's end screen replaces the UI.
+        if (MP.GAME.lives or 1) <= 0 then return deliver({fields = {action = 'loseGame'}}) end
+        if (enemy.lives or 1) <= 0 then return deliver({fields = {action = 'winGame'}}) end
+        deliver({fields = {action = 'endPvP', lost = lost}})
+    end
+
     -- Waiting is fine while the game can still get to the action. The screen
     -- tells when it cannot: a hand to play while the game sits in the shop
     -- means the two did not finish a round together.
@@ -666,6 +771,10 @@ return function(log, driver, JSON, deps)
             if G.STAGE == G.STAGES.MAIN_MENU and now - session.rejoined > 0.8 and not wiping and not G.OVERLAY_MENU then
                 S.phase = 'starting'
                 session.started_at = now
+                -- A consumable use interrupted by a stopped replay leaves
+                -- G.TAROT_INTERRUPT set, and the run start then builds card areas
+                -- with it still on. A fresh run never has a use in progress.
+                G.TAROT_INTERRUPT = nil
                 deliver({action = 'startGame', fields = {action = 'startGame', seed = session.run.manifest.seed, stake = session.run.manifest.stake}, line = session.run.line})
                 S.status('Replay starting run ' .. session.run.manifest.seed)
             elseif now - session.rejoined > STALL then
@@ -687,6 +796,10 @@ return function(log, driver, JSON, deps)
         -- A recording that was running must not go missing halfway through.
         local rec = recorder()
         if session.recording and not (rec and rec.ok) then return fail('Action Recorder stopped writing') end
+        if S.unlocked then
+            session.waiting_since, session.hand_pending = nil, nil
+            return free_play()
+        end
         -- RLOG acknowledges the input before scoring/discard animations and their
         -- triggered effects finish. Do not deliver round-ending messages or issue
         -- another input while that hand operation is still resolving.
@@ -802,6 +915,12 @@ return function(log, driver, JSON, deps)
 
     function S.end_screen_reached()
         if not session or S.phase ~= 'running' then return end
+        -- The player played this run out themselves, so the log's remaining
+        -- actions were never theirs to play: an ending, not a failure.
+        if S.unlocked then
+            S.phase = 'finished'
+            return S.status('Replay ended - the player played this run out themselves')
+        end
         if session.entries[session.cursor] then
             fail('the game ended before all recorded actions were played')
         else
