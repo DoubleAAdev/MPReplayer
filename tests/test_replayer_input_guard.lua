@@ -209,12 +209,23 @@ local end_node = box.definition.nodes[1].nodes[2].nodes[1]
 assert(end_node.nodes[1].config.text == 'End Replay' and end_node.config.func == nil)
 -- A screen containing only Leave Lobby still gets its exit.
 assert(table.concat(buttons(guard.rewrite(button('lobby_leave'))), ',') == 'mprpl_end')
+-- Take Over gives a running replay the same freedom a normal game has.
+session.unlocked = true; guard.update()
+assert(next(controller.pressed_keys) == nil, 'held input does not cross into the hands of the player')
+hand.cards[1]:click(); assert(count('card_click') == 1)
+local used = count('use_card')
+UIElement.click({config = {button = 'use_card'}}); assert(count('use_card') == used + 1, 'consumables work again')
+assert(table.concat(buttons(guard.rewrite(menu())), ',') == 'options,mprpl_end',
+    'the replay still owns the pause menu: no Unstuck and no lobby exits')
+session.unlocked = false; guard.update()
+UIElement.click({config = {button = 'use_card'}}); assert(count('use_card') == used + 1, 'handing back locks the controls again')
+
 -- Normal games get their exact controls back, with no stale held input.
 session.phase = 'idle'; guard.update()
 assert(next(controller.pressed_keys) == nil)
 local ordinary = menu(); assert(guard.rewrite(ordinary) == ordinary)
 assert(table.concat(buttons(ordinary), ',') == 'options,mp_unstuck,mp_return_to_lobby,lobby_leave')
-hand.cards[1]:click(); hand.cards[1]:drag(); assert(count('card_click') == 1 and count('drag') == 1)
+hand.cards[1]:click(); hand.cards[1]:drag(); assert(count('card_click') == 2 and count('drag') == 1)
 love.keypressed('r'); assert(count('shortcut_keypressed') == 1)
 UIElement.click({config = {button = 'sell_card'}}); assert(count('sell_card') == 2)
 print('PASS: replay input isolation, queued drag cancellation, mouse/touch/keyboard/gamepad menus, lobby exit replacement and restored controls')

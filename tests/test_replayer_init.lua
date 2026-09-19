@@ -272,16 +272,16 @@ assert(stop_calls == 1, 'End Replay is harmless outside replays')
 session.stop = actual_stop
 print('PASS: config rows and buttons, picker and drop loading, guarded start, and hook return values')
 
--- Fast forward: arrows above the deck step 1x..512x, wrapping, and each frame runs
--- that many game updates while the replay runs.
-local boxes, updates = {}, 0
+-- Fast forward: arrows above the deck step 0.5x..512x, wrapping. Above 1x each frame
+-- runs that many game updates; below 2x it runs one update with a scaled dt.
+local boxes, updates, last_dt = {}, 0, nil
 function UIBox(args)
     local box = {args = args, remove = function(self) self.REMOVED = true end}
     boxes[#boxes + 1] = box
     return box
 end
 local real_update = session.update
-session.update = function() updates = updates + 1 end
+session.update = function(dt) updates, last_dt = updates + 1, dt end
 G.STAGE, G.deck = G.STAGES.RUN, {}
 session.phase = 'running'
 Game:update(0.016)
@@ -290,22 +290,58 @@ local row = boxes[1].args.definition.nodes[1].nodes[2].nodes
 local label = row[2].nodes[1].config.ref_table
 assert(label.label == '1x' and row[1].config.button == 'mprpl_speed_down' and row[3].config.button == 'mprpl_speed_up')
 G.FUNCS.mprpl_speed_down()
-assert(label.label == '512x', 'below 1x wraps to 512x')
+assert(label.label == '0.5x', '1x steps down to 0.5x')
+Game:update(0.016)
+assert(updates == 2 and last_dt == 0.008, 'a 0.5x frame runs one update at half the dt: ' .. tostring(last_dt))
+G.FUNCS.mprpl_speed_down()
+assert(label.label == '512x', 'below 0.5x wraps to 512x')
 G.FUNCS.mprpl_speed_up()
-assert(label.label == '1x', 'above 512x wraps to 1x')
+assert(label.label == '0.5x', 'above 512x wraps to 0.5x')
+for _ = 1, 2 do G.FUNCS.mprpl_speed_up() end
+assert(label.label == '1.5x', '1x steps up to 1.5x')
+Game:update(0.016)
+assert(updates == 3 and last_dt == 0.024, 'a 1.5x frame runs one update at 1.5x the dt: ' .. tostring(last_dt))
 for _ = 1, 3 do G.FUNCS.mprpl_speed_up() end
 assert(label.label == '8x')
 Game:update(0.016)
-assert(updates == 9, 'an 8x frame runs eight updates: ' .. updates)
+assert(updates == 11, 'an 8x frame runs eight updates: ' .. updates)
 for _ = 1, 6 do G.FUNCS.mprpl_speed_up() end
 assert(label.label == '512x')
 G.FUNCS.mprpl_speed_down()
 assert(label.label == '256x')
+-- Pause sits under the arrows; a toggle rebuilds it as Play and back.
+local function pause_button(box) return box.args.definition.nodes[1].nodes[3].nodes[1] end
+local function pause_text(box) return pause_button(box).nodes[1].config.text end
+assert(pause_button(boxes[1]).config.button == 'mprpl_speed_pause' and pause_text(boxes[1]) == 'Pause')
+session.phase = 'stopped'
+G.FUNCS.mprpl_speed_pause()
+Game:update(0.016)
+assert(session.hold and boxes[1].REMOVED and #boxes == 2 and pause_text(boxes[2]) == 'Play' and label.value == 256,
+    'pausing holds the replay, shows Play and keeps the speed')
+G.FUNCS.mprpl_speed_pause()
+Game:update(0.016)
+assert(not session.hold and boxes[2].REMOVED and #boxes == 3 and pause_text(boxes[3]) == 'Pause')
+-- Take Over sits under Pause, the same size, and hands the controls to the player.
+local function control_button(box) return box.args.definition.nodes[1].nodes[4].nodes[1] end
+local function control_text(box) return control_button(box).nodes[1].config.text end
+assert(control_button(boxes[3]).config.button == 'mprpl_control' and control_text(boxes[3]) == 'Take Over')
+assert(control_button(boxes[3]).config.minw == pause_button(boxes[3]).config.minw
+    and control_button(boxes[3]).config.minh == pause_button(boxes[3]).config.minh, 'it matches the Pause button above it')
+G.FUNCS.mprpl_control()
+Game:update(0.016)
+assert(session.unlocked and boxes[3].REMOVED and #boxes == 4 and control_text(boxes[4]) == 'Hand Back',
+    'taking over unlocks the controls and offers them back')
+G.FUNCS.mprpl_control()
+Game:update(0.016)
+assert(not session.unlocked and boxes[4].REMOVED and #boxes == 5 and control_text(boxes[5]) == 'Take Over')
+G.FUNCS.mprpl_speed_pause()
+session.unlocked = true
 session.phase = 'idle'
 Game:update(0.016)
-assert(boxes[1].REMOVED and label.value == 1 and updates == 10, 'the button leaves with the replay and speed resets')
+assert(boxes[5].REMOVED and label.value == 1 and not session.hold and not session.unlocked and updates == 16,
+    'the button leaves with the replay; speed, pause and the controls reset')
 session.update, G.STAGE, G.deck = real_update, G.STAGES.MAIN_MENU, nil
-print('PASS: fast forward arrows step and wrap between 1x and 512x, and each frame runs that many updates')
+print('PASS: fast forward arrows step and wrap between 0.5x and 512x, and each frame runs that many updates')
 
 assert(#mod.extra_tabs() == 1)
 session.phase = 'failed'

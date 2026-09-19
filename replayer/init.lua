@@ -110,13 +110,16 @@ return function(mod, JSON)
             show_replays()
         end
     end
-    G.FUNCS.mprpl_start_listed = function(e)
+    -- A fresh Start drops any earlier approval and asks again if mods differ.
+    local function start_with(starter)
         if session.phase ~= 'idle' then return show_active_replay() end
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
-        protect(function() session.start_listed(e.config.ref_table) end)
+        protect(starter)
         after_start()
     end
+    G.FUNCS.mprpl_start_listed = function(e) start_with(function() session.start_listed(e.config.ref_table) end) end
+    G.FUNCS.mprpl_start = function() start_with(session.start) end
     G.FUNCS.mprpl_cancel_replay = function()
         pending_confirmation = nil
         session.confirmed, session.confirmed_mods = nil, nil
@@ -141,13 +144,6 @@ return function(mod, JSON)
         guard().update()
     end
     G.FUNCS.mprpl_next = function() protect(session.next_run) end
-    G.FUNCS.mprpl_start = function()
-        if session.phase ~= 'idle' then return show_active_replay() end
-        pending_confirmation = nil
-        session.confirmed, session.confirmed_mods = nil, nil
-        protect(session.start)
-        after_start()
-    end
     local function change_log_page(delta)
         session.log_page(delta)
         if G.FUNCS['openModUI_' .. mod.id] then
@@ -167,7 +163,6 @@ return function(mod, JSON)
         end)
         guard().update()
     end
-    G.FUNCS.mprpl_stop = G.FUNCS.mprpl_end
 
     local previous_drop = love.filedropped
     love.filedropped = function(file)
@@ -187,45 +182,76 @@ return function(mod, JSON)
     end
 
     local function pack(...) return {n = select('#', ...), ...} end
-    -- Fast forward: arrows above the deck halve or double the speed between
-    -- 1x and 512x, wrapping at either end. Balatro starts at most one blocking event per
-    -- update, so speed comes from more updates per frame, not a bigger dt.
-    local speed = {value = 1, label = '1x'}
-    local speed_box, speed_deck
-    local update_cost = 0.001
-    local function set_speed(value)
-        speed.value = value
-        speed.label = value .. 'x'
+    local function text(value, scale, colour)
+        return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
     end
-    G.FUNCS.mprpl_speed_down = function() set_speed(speed.value <= 1 and 512 or speed.value / 2) end
-    G.FUNCS.mprpl_speed_up = function() set_speed(speed.value >= 512 and 1 or speed.value * 2) end
+    local function icon(atlas, pos, w, h, fallback)
+        if Sprite and atlas then
+            local sprite = Sprite(0, 0, w, h, atlas, pos or {x = 0, y = 0})
+            sprite.states.drag.can, sprite.states.collide.can = false, false
+            return {n = G.UIT.O, config = {object = sprite}}
+        end
+        return text(fallback, 0.28)
+    end
+    -- Fast forward: arrows above the deck step through the speeds below,
+    -- wrapping at either end. Balatro starts at most one blocking event per
+    -- update, so above 1x the speed comes from more updates per frame; below 2x
+    -- there is nothing to repeat, so it comes from a scaled dt instead.
+    local speeds = {0.5, 1, 1.5, 2, 4, 8, 16, 32, 64, 128, 256, 512}
+    local default_speed = 2
+    local speed = {value = speeds[default_speed], label = speeds[default_speed] .. 'x', index = default_speed}
+    local speed_box, speed_deck, speed_hold, speed_free
+    local update_cost = 0.001
+    local function set_speed(index)
+        speed.index = (index - 1) % #speeds + 1
+        speed.value = speeds[speed.index]
+        speed.label = speed.value .. 'x'
+    end
+    G.FUNCS.mprpl_speed_down = function() set_speed(speed.index - 1) end
+    G.FUNCS.mprpl_speed_up = function() set_speed(speed.index + 1) end
+    -- Pause holds the replay's next move; the game itself keeps running.
+    G.FUNCS.mprpl_speed_pause = function() session.hold = not session.hold end
+    -- Take Over halts the replay and gives every control back to the player.
+    G.FUNCS.mprpl_control = function() session.unlocked = not session.unlocked end
     local function sync_speed_button()
         local show = session.phase ~= 'idle' and G.STAGE == G.STAGES.RUN and G.deck ~= nil
-        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED) then
+        -- The pause button's label and colour are fixed per box, so a toggle rebuilds it.
+        if speed_box and (not show or speed_deck ~= G.deck or speed_box.REMOVED
+            or speed_hold ~= session.hold or speed_free ~= session.unlocked) then
             if not speed_box.REMOVED then speed_box:remove() end
             speed_box, speed_deck = nil, nil
         end
         if not show then
-            set_speed(1)
+            set_speed(default_speed)
+            session.hold, session.unlocked = false, false
         elseif not speed_box then
-            speed_deck = G.deck
-            -- Styled like the run HUD's boxes: a dark embossed panel, a
-            -- label over an inset value, and orange buttons like Options.
+            speed_deck, speed_hold, speed_free = G.deck, session.hold, session.unlocked
+            -- The panel is shaded like the card areas beside it, with a label over
+            -- an inset value from the run HUD and orange buttons like Options.
             local dyn = G.C.DYN_UI or {}
-            local function arrow(text, callback)
+            local function arrow(glyph, callback)
                 return {n = G.UIT.C, config = {align = 'cm', button = callback, colour = G.C.ORANGE, r = 0.08,
-                    minw = 0.42, minh = 0.42, hover = true, shadow = true, emboss = 0.04}, nodes = {
-                    {n = G.UIT.T, config = {text = text, scale = 0.34, colour = G.C.WHITE, shadow = true}}}}
+                    minw = 0.42, minh = 0.42, hover = true, shadow = true, emboss = 0.04}, nodes = {text(glyph, 0.34)}}
             end
             speed_box = UIBox{definition = {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR}, nodes = {
-                {n = G.UIT.C, config = {align = 'cm', colour = dyn.MAIN or G.C.BLACK, r = 0.12, padding = 0.07, emboss = 0.05}, nodes = {
-                    {n = G.UIT.R, config = {align = 'cm'}, nodes = {
-                        {n = G.UIT.T, config = {text = 'Speed', scale = 0.28, colour = G.C.WHITE, shadow = true}}}},
+                {n = G.UIT.C, config = {align = 'cm', colour = {0, 0, 0, 0.1}, r = 0.1, padding = 0.07}, nodes = {
+                    {n = G.UIT.R, config = {align = 'cm'}, nodes = {text('Speed', 0.28)}},
                     {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
                         arrow('<', 'mprpl_speed_down'),
                         {n = G.UIT.C, config = {align = 'cm', colour = dyn.BOSS_DARK or G.C.BLACK, r = 0.08, minw = 0.95, minh = 0.42}, nodes = {
                             {n = G.UIT.T, config = {ref_table = speed, ref_value = 'label', scale = 0.34, colour = G.C.WHITE, shadow = true}}}},
-                        arrow('>', 'mprpl_speed_up')}}}}}},
+                        arrow('>', 'mprpl_speed_up')}},
+                    -- As wide as the arrow row: 0.42 + 0.95 + 0.42 plus three gaps.
+                    {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_speed_pause', colour = speed_hold and G.C.GREEN or G.C.BLUE, r = 0.08,
+                            minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
+                            text(speed_hold and 'Play' or 'Pause', 0.3)}}}},
+                    -- Take Over sits under Pause, same size and padding. Red while the
+                    -- player holds the controls, because the replay cannot go on then.
+                    {n = G.UIT.R, config = {align = 'cm', padding = 0.04}, nodes = {
+                        {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_control', colour = speed_free and G.C.RED or G.C.ORANGE, r = 0.08,
+                            minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
+                            text(speed_free and 'Hand Back' or 'Take Over', 0.28)}}}}}}}},
                 config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
         end
     end
@@ -247,7 +273,7 @@ return function(mod, JSON)
         end
         -- ponytail: 50 ms of updates per frame; on a slow CPU the real speed
         -- stays below the label at the top settings.
-        local count = math.max(1, math.min(speed.value, math.floor(0.05 / update_cost)))
+        local count = math.max(1, math.min(math.floor(speed.value), math.floor(0.05 / update_cost)))
         local sub_dt = math.min(dt * speed.value / count, 0.05)
         local started, result, done = love.timer.getTime(), nil, 0
         repeat
@@ -288,8 +314,7 @@ return function(mod, JSON)
     end
     show_active_replay = function()
         local function message(value, scale)
-            return {n = G.UIT.R, config = {align = 'cm', padding = 0.1}, nodes = {
-                {n = G.UIT.T, config = {text = value, scale = scale, colour = G.C.WHITE, shadow = true}}}}
+            return {n = G.UIT.R, config = {align = 'cm', padding = 0.1}, nodes = {text(value, scale)}}
         end
         G.FUNCS.overlay_menu{definition = create_UIBox_generic_options{no_back = true, contents = {
             message('Replay already active', 0.55),
@@ -301,9 +326,8 @@ return function(mod, JSON)
     end
     G.FUNCS.mprpl_active_back = show_replays
     show_confirmation = function()
-        local function message(text, scale)
-            return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {
-                {n = G.UIT.T, config = {text = text, scale = scale or 0.38, colour = G.C.WHITE, shadow = true}}}}
+        local function message(value, scale)
+            return {n = G.UIT.R, config = {align = 'cm', padding = 0.08}, nodes = {text(value, scale or 0.38)}}
         end
         local rows = {
             message(session.steamodded_warning and 'Check Steamodded' or 'Mods differ', 0.55),
@@ -324,8 +348,7 @@ return function(mod, JSON)
     G.FUNCS.mprpl_details = function()
         session.refresh_mods()
         local rows = {
-            {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {
-                {n = G.UIT.T, config = {text = 'Compare Mods', scale = 0.55, colour = G.C.WHITE, shadow = true}}}},
+            {n = G.UIT.R, config = {align = 'cm', padding = 0.12}, nodes = {text('Compare Mods', 0.55)}},
             row('mod_overview', 0.44),
         }
         if session.mod_hint ~= '' then rows[#rows + 1] = row('mod_hint', 0.34) end
@@ -343,21 +366,10 @@ return function(mod, JSON)
     end
     mod.config_tab = function() return mod.extra_tabs()[1].tab_definition_function() end
     if SMODS.LAST_SELECTED_MOD_TAB == 'config' then SMODS.LAST_SELECTED_MOD_TAB = mod.id .. '_1' end
-    local function text(value, scale, colour)
-        return {n = G.UIT.T, config = {text = value, scale = scale or 0.32, colour = colour or G.C.WHITE, shadow = true}}
-    end
-    local function icon(atlas, pos, w, h, fallback)
-        if Sprite and atlas then
-            local sprite = Sprite(0, 0, w, h, atlas, pos or {x = 0, y = 0})
-            sprite.states.drag.can, sprite.states.collide.can = false, false
-            return {n = G.UIT.O, config = {object = sprite}}
-        end
-        return text(fallback, 0.28)
-    end
     local debug_tab = load('debug.lua')(session, mod, JSON)
     mod.extra_tabs = function()
         if session.phase ~= 'idle' then return {{label = 'Debug', tab_definition_function = debug_tab.definition}} end
-        local tabs = {{label = 'Replays', tab_definition_function = function()
+        return {{label = 'Replays', tab_definition_function = function()
             session.log_page()
             local rows = {buttons(button('Load Log', 'mprpl_load', 4.0), button('Compare Mods', 'mprpl_details', 4.0)),
                 row('log_filename', 0.38), row('log_count', 0.3)}
@@ -383,9 +395,7 @@ return function(mod, JSON)
                                 icon(stake and atlases[stake.atlas or 'chips'], stake and stake.pos, 0.32, 0.32, '?'),
                                 text(session.stake_name(m.stake), 0.3)}}}},
                         UIBox_button{label = {'Start Replay'}, button = 'mprpl_start_listed', ref_table = run,
-                            minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = G.C.GREEN or G.C.BLUE}
-
-                    }}
+                            minw = 1.8, minh = 0.65, scale = 0.32, col = true, colour = G.C.GREEN or G.C.BLUE}}}
                 end
             end
             if #runs == 0 then rows[#rows + 1] = {n = G.UIT.R, config = {align = 'cm'}, nodes = {text('Load a log to see its games.')}} end
@@ -395,7 +405,6 @@ return function(mod, JSON)
             end
             return {n = G.UIT.ROOT, config = {align = 'cm', colour = G.C.CLEAR, padding = 0.12}, nodes = rows}
         end}}
-        return tabs
     end
     end_screen = load('end-screen.lua')(session, show_replays, after_start)
     return session

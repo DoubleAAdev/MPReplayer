@@ -65,6 +65,14 @@ local text = table.concat({
     P .. 'Client sent message: action:boughtCardFromShop,card:Misprint,cost:4',
     P .. 'MP_RLOG: 8 reroll',
     P .. 'Client sent message: action:rerollShop,cost:5',
+    P .. 'Client got enemyInfo message:  (action: enemyInfo)  (handsLeft: 3)  (score: 150) ',
+    P .. 'Client got enemyInfo message:  (action: enemyInfo)  (handsLeft: 3)  (score: 200) ',
+    P .. 'Client got enemyInfo message:  (action: enemyInfo)  (handsLeft: 2)  (score: 600) ',
+    P .. 'Client got enemyInfo message:  (action: enemyInfo)  (handsLeft: 2)  (score: 600) ',
+    P .. 'Client got endPvP message:  (lost: false)  (action: endPvP) ',
+    P .. 'Client got startBlind message:  (firstPlayer: host)  (action: startBlind) ',
+    P .. 'Client got enemyInfo message:  (action: enemyInfo)  (handsLeft: 0)  (score: 9999) ',
+    P .. 'Client got endPvP message:  (lost: true)  (action: endPvP) ',
     P .. 'MP_RLOG: END {}',
 }, '\n')
 package.loaded.json = nil
@@ -200,8 +208,10 @@ session.on_main_menu()
 session.update(0.1)
 assert(#channel.items == 0, 'the menu gets a moment to rebuild')
 now = now + 1
+G.TAROT_INTERRUPT = 5
 session.update(0.1)
 assert(#channel.items == 1 and session.phase == 'starting', 'startGame is delivered like the server did')
+assert(G.TAROT_INTERRUPT == nil, 'a leftover consumable interrupt is cleared before the run starts')
 assert(sent_last().action == 'startGame' and sent_last().seed == 'TESTSEED' and sent_last().stake == 1)
 channel:pop()
 
@@ -284,6 +294,11 @@ G.SETTINGS.paused = true
 for _ = 1, 10 do now = now + 10; session.update(0.1) end
 assert(session.phase == 'running' and #performed == 3)
 G.SETTINGS.paused = false
+-- The speed control's pause holds the next move, not the game, and never stalls.
+session.hold = true
+for _ = 1, 10 do now = now + 10; session.update(0.1) end
+assert(session.phase == 'running' and #performed == 3, 'a held replay makes no move')
+session.hold = false
 now = now + 1
 session.update(0.1)
 now = now + 1
@@ -378,6 +393,93 @@ assert(session.phase == 'finished', session.text)
 assert(table.concat(performed, ',') == 'select_blind 0,play 1.2,ready_blind 1,buy 1 1,reroll', table.concat(performed, ','))
 assert(session.text:find('Replay complete %- all 6 actions') and session.text:find('run.jsonl'), session.text)
 session.on_main_menu()
+
+-- Take Over: the player plays their own game. The replay performs nothing and
+-- delivers nothing from the log; only the PvP blind is driven, from the scores
+-- read when the replay started.
+function to_big(value) return value end
+MP.INSANE_INT = {
+    from_string = function(text) return {coeffiocient = tonumber(text) or 0, exponent = 0, text = text} end,
+    to_string = function(score) return score.text end,
+    empty = function() return {coeffiocient = 0, exponent = 0, text = '0'} end,
+}
+local emitting = driver.perform
+driver.perform = function(entry) performed[#performed + 1] = entry.text; return 'done' end
+performed, records = {}, {}
+begin()
+channel.items = {}
+MP.GAME.lives, MP.GAME.enemy = 4, {lives = 4}
+MP.is_pvp_boss = function() return false end
+session.unlocked = true
+for _ = 1, 10 do now = now + 10; session.update(0.1) end
+assert(session.phase == 'running' and #performed == 0 and #channel.items == 0,
+    'nothing is performed and nothing from the log is delivered while the player plays')
+
+-- A move of the player's own is logged as a normal game logs it, not checked.
+MP.RLOG.record('play', {{3, 4}}, 'action:play,cards:3.4')
+assert(session.phase == 'running' and #records == 1, "the player's own move never fails the replay")
+
+-- Ready starts the PvP blind, with the log's first player.
+MP.GAME.ready_blind = true
+session.update(0.1)
+assert(#channel.items == 1 and sent_last().action == 'startBlind' and sent_last().firstPlayer == 'guest')
+session.update(0.1)
+assert(#channel.items == 1, 'and it is sent once, however long the player stays ready')
+
+-- In the blind the opponent's logged score shows, and nothing is decided while
+-- the player still has hands to play.
+MP.is_pvp_boss = function() return true end
+G.GAME.current_round = {hands_left = 2}
+session.update(0.1)
+assert(not MP.GAME.enemy.info_received, 'the opponent has played no hand yet, so there is no score to show')
+-- Their score moves a hand at a time with the player's, never straight to the
+-- total: the log has them on 200 after one hand and 600 after two.
+G.GAME.current_round.hands_left = 1
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '200' and MP.GAME.enemy.info_received,
+    'one hand played shows one hand of theirs, whatever enemyInfo repeated for it')
+assert(MP.GAME.enemy.hands == 3, 'and the hands they have left come down with it')
+assert(MP.GAME.lives == 4 and MP.GAME.enemy.lives == 4 and #channel.items == 1)
+
+-- Out of hands: their whole blind counts, and the higher score takes it.
+G.GAME.current_round.hands_left = 0
+G.GAME.chips = 5000
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '600' and MP.GAME.enemy.hands == 2,
+    'and the blind is decided on the hand they finished on')
+assert(MP.GAME.enemy.lives == 3 and MP.GAME.lives == 4, 'outscoring the opponent takes their life')
+assert(sent_last().action == 'endPvP' and sent_last().lost == false, 'and the blind is ended the way the server ends it')
+local settled = #channel.items
+for _ = 1, 5 do session.update(0.1) end
+assert(#channel.items == settled and MP.GAME.enemy.lives == 3, 'a settled blind is settled once')
+
+-- The next PvP blind the log holds is the next one played, with its own score.
+MP.is_pvp_boss = function() return false end
+MP.GAME.ready_blind = false
+session.update(0.1)
+MP.GAME.ready_blind = true
+session.update(0.1)
+assert(sent_last().action == 'startBlind' and sent_last().firstPlayer == 'host', 'the second blind starts on its own record')
+MP.is_pvp_boss = function() return true end
+MP.GAME.enemy.info_received = false
+G.GAME.current_round, G.GAME.chips = {hands_left = 0}, 100
+MP.GAME.lives = 1
+session.update(0.1)
+assert(MP.GAME.enemy.score_text == '9999', "and shows that blind's score, not the last one's")
+assert(MP.GAME.lives == 0 and MP.GAME.enemy.lives == 3, 'being outscored costs the player a life instead')
+-- The last life ends the run, and Multiplayer's game over brings up the
+-- replay's end screen in place of its own.
+assert(sent_last().action == 'loseGame', 'the run ends rather than the blind')
+session.end_screen_reached()
+assert(session.phase == 'finished' and session.text:find('played this run out themselves'), session.text)
+session.phase = 'running'
+session.unlocked = false
+MP.GAME.ready_blind, G.GAME.current_round, G.GAME.chips = nil, nil, nil
+MP.is_pvp_boss = nil
+session.stop()
+session.on_main_menu()
+driver.perform = emitting
+performed, records = {}, {}
 
 -- Without Balatro Observer's Action Recorder the replay runs just the same.
 local saved_recorder = BalatroActionRecorder
