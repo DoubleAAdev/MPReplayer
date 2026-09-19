@@ -168,29 +168,73 @@ return function(session)
         end)
     end
 
+    -- Keep the native button's label tree, font, shadow and dimensions, and
+    -- give it one line of text: the rest of a multi-line label goes blank.
+    local function relabel(node, label)
+        local replaced = false
+        local function walk(child)
+            if child.n == G.UIT.T and child.config and child.config.text then
+                child.config.text = replaced and '' or label
+                replaced = true
+            end
+            for _, nested in pairs(child.nodes or {}) do walk(nested) end
+        end
+        walk(node)
+    end
+    local function holds(node, target)
+        if node == target then return true end
+        for _, child in pairs(node.nodes or {}) do
+            if holds(child, target) then return true end
+        end
+        return false
+    end
+    -- Restart Replay is End Replay's own row copied, so the two match in size,
+    -- colour and font whatever the menu around them is built from. Colours and
+    -- other config values are shared; only the tree itself is rebuilt.
+    local function restart_row(row, button)
+        local function copy(node)
+            if type(node) ~= 'table' then return node end
+            local out = {}
+            for key, value in pairs(node) do
+                if key == 'nodes' then
+                    out.nodes = {}
+                    for index, child in pairs(value) do out.nodes[index] = copy(child) end
+                elseif key == 'config' then
+                    out.config = {}
+                    for name, setting in pairs(value) do out.config[name] = setting end
+                else
+                    out[key] = value
+                end
+            end
+            return out
+        end
+        local made = copy(row)
+        local function retarget(node)
+            if node.config and node.config.button == button then
+                node.config.button, node.config.id = 'mprpl_restart', 'mprpl_restart'
+            end
+            for _, child in pairs(node.nodes or {}) do retarget(child) end
+        end
+        retarget(made)
+        relabel(made, 'Restart Replay')
+        return made
+    end
+
     -- Transform the final UI definition, including Multiplayer's patched pause
-    -- menu and its game-over screen. One End Replay replaces both lobby exits.
+    -- menu and its game-over screen. One End Replay replaces both lobby exits,
+    -- with Restart Replay under it.
     function M.rewrite(definition)
         if not in_session() then return definition end
-        local end_added = false
+        local end_node, restart_added = nil, false
         local function visit(node)
             if type(node) ~= 'table' then return node end
             local config = node.config or {}
             if config.button == 'mp_unstuck' then return nil end
             if exits[config.button] then
-                if end_added then return nil end
-                end_added = true
+                if end_node then return nil end
                 config.button, config.func, config.id = 'mprpl_end', nil, 'mprpl_end'
-                -- Keep the native button's label tree, font, shadow and dimensions.
-                local replaced = false
-                local function relabel(child)
-                    if child.n == G.UIT.T and child.config and child.config.text then
-                        child.config.text = replaced and '' or 'End Replay'
-                        replaced = true
-                    end
-                    for _, nested in pairs(child.nodes or {}) do relabel(nested) end
-                end
-                for _, child in pairs(node.nodes or {}) do relabel(child) end
+                relabel(node, 'End Replay')
+                end_node = node
                 return node
             end
             if node.nodes then
@@ -199,7 +243,16 @@ return function(session)
                 table.sort(keys)
                 for _, key in ipairs(keys) do
                     local child = visit(node.nodes[key])
-                    if child then children[#children + 1] = child end
+                    if child then
+                        children[#children + 1] = child
+                        -- The row holding End Replay, not the button inside it:
+                        -- a copy beside the button would sit next to it, and a
+                        -- copy beside the row sits under it.
+                        if end_node and not restart_added and child ~= end_node and holds(child, end_node) then
+                            restart_added = true
+                            children[#children + 1] = restart_row(child, 'mprpl_end')
+                        end
+                    end
                 end
                 if #keys > 0 and #children == 0 then return nil end
                 node.nodes = children

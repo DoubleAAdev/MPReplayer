@@ -18,7 +18,8 @@ local run = {manifest = {player = 'Alice', opponent = 'Bob', deck = 'b_red', sta
 local active, stopped, restarted, tabs, approvals = run, 0, 0, 0, 0
 local session = {phase = 'running', deck_center = function() return {pos = {x = 0, y = 0}} end,
     deck_name = function() return 'Red Deck' end, stake_name = function() return 'White Stake' end,
-    active_run = function() return active end}
+    active_run = function() return active end,
+}
 session.end_screen_reached = function() session.phase = 'finished' end
 session.stop = function()
     assert(not G.OVERLAY_MENU)
@@ -26,7 +27,10 @@ session.stop = function()
 end
 session.start_listed = function(selected)
     assert(selected == run and session.phase == 'idle' and G.STAGE == G.STAGES.MAIN_MENU)
-    assert(session.confirmed == nil and session.confirmed_mods == nil)
+    -- The player already approved the mod difference to start this run, so
+    -- restarting it must not ask them the same question a second time.
+    assert(session.confirmed == run and session.confirmed_mods == 'old',
+        'the approval that started this run is handed on to the restart')
     restarted = restarted + 1; session.phase = 'joining'; active = selected
 end
 local native = 0
@@ -65,6 +69,19 @@ G.FUNCS.mprpl_restart(); G.FUNCS.mprpl_restart()
 assert(stopped == 1)
 screen.update(); assert(restarted == 0, 'must wait for cleanup')
 active = nil; session.phase = 'idle'; G.STAGE = G.STAGES.MAIN_MENU
+-- Multiplayer resets the lobby options as it leaves, so a restart waits for the
+-- menu to hold still: no overlay, no screen wipe, and a stretch of quiet after.
+screen.update(); assert(restarted == 0, 'the first quiet frame is not enough')
+G.OVERLAY_MENU = {}
+for _ = 1, 60 do screen.update() end
+assert(restarted == 0, 'an open overlay is not a settled menu')
+G.OVERLAY_MENU = nil
+G.CONTROLLER = {locks = {wipe = true}}
+for _ = 1, 60 do screen.update() end
+assert(restarted == 0, 'nor is a screen wipe')
+G.CONTROLLER = {locks = {}}
+for _ = 1, 44 do screen.update() end
+assert(restarted == 0, 'the wait starts again once it is quiet')
 screen.update(); assert(restarted == 1 and approvals == 1)
 session.phase = 'finished'; screen.update()
 assert(overlays == 1 and G.OVERLAY_MENU.config.no_esc)

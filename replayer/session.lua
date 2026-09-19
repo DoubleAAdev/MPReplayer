@@ -476,7 +476,10 @@ return function(log, driver, JSON, deps)
             S.status('Critical or unknown mods differ. Replay may stop early.')
             return
         end
-        S.confirmed = nil
+        -- The approval is kept, not spent: restarting the same run with the
+        -- same mods loaded is the confirmed thing happening again. A fresh
+        -- Start clears it before it gets here, and so does changing the
+        -- selection, so neither reuses it.
         classify(run.entries)
         saved = {send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
             modifiers = MP.MODIFIERS, sp = {}, lobby = {}}

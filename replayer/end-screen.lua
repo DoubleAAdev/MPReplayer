@@ -1,6 +1,8 @@
 -- Replay-only replacement for Multiplayer's result screen. Native games pass through.
 return function(session, show_replays, after_start)
     local M, pending, shown, hooked = {}, nil, nil, false
+    -- Frames the main menu must hold still before a restart begins.
+    local SETTLE = 45
     local function clean(value, limit)
         local s = tostring(value or 'Unknown'):gsub('[%c]', ' ')
         return #s > limit and (s:sub(1, limit - 3) .. '...') or s
@@ -104,10 +106,22 @@ return function(session, show_replays, after_start)
     end
     function M.update()
         if pending and session.phase == 'idle' and G.STAGE == G.STAGES.MAIN_MENU then
+            -- Multiplayer leaves the lobby over several frames and resets the
+            -- lobby options on its way out. A replay started into that teardown
+            -- has its deck and rules wiped from under it and the run begins on
+            -- the default deck, so the menu has to settle first, the way the
+            -- replay waits for it before starting a run.
+            if pending.destination == 'restart' then
+                local wiping = ((G.CONTROLLER or {}).locks or {}).wipe
+                if G.OVERLAY_MENU or wiping then pending.settling = nil; return end
+                pending.settling = (pending.settling or 0) + 1
+                if pending.settling < SETTLE then return end
+            end
             local next_action = pending
             pending, shown = nil, nil
             if next_action.destination == 'restart' then
-                session.confirmed, session.confirmed_mods = nil, nil
+                -- Whatever the player confirmed to start this run stands for
+                -- restarting it; asking the same question twice is noise.
                 session.start_listed(next_action.run)
                 after_start()
             elseif next_action.destination == 'replays' then

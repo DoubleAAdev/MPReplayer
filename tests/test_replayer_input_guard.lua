@@ -204,10 +204,18 @@ local function buttons(node, result)
 end
 local box = {}
 assert(UIBox.init(box, {definition = menu()}) == 'box')
-assert(table.concat(buttons(box.definition), ',') == 'options,mprpl_end')
+assert(table.concat(buttons(box.definition), ',') == 'options,mprpl_end,mprpl_restart')
 local end_node = box.definition.nodes[1].nodes[2].nodes[1]
 assert(end_node.nodes[1].config.text == 'End Replay' and end_node.config.func == nil)
--- A screen containing only Leave Lobby still gets its exit.
+-- Restart Replay is the row under it, the same button copied, so the two match
+-- in size and font however the menu around them was built.
+local end_row, restart_row = box.definition.nodes[1].nodes[2], box.definition.nodes[1].nodes[3]
+local restart_node = restart_row.nodes[1]
+assert(restart_row.n == end_row.n and restart_node.n == end_node.n)
+assert(restart_node.config.button == 'mprpl_restart' and restart_node.nodes[1].config.text == 'Restart Replay')
+assert(restart_node ~= end_node and restart_node.config ~= end_node.config, 'the copy shares nothing the game can mutate')
+-- A screen containing only Leave Lobby still gets its exit. There is no row to
+-- copy there, so it gets the exit alone rather than a button laid out wrong.
 assert(table.concat(buttons(guard.rewrite(button('lobby_leave'))), ',') == 'mprpl_end')
 -- Take Over gives a running replay the same freedom a normal game has.
 session.unlocked = true; guard.update()
@@ -215,7 +223,7 @@ assert(next(controller.pressed_keys) == nil, 'held input does not cross into the
 hand.cards[1]:click(); assert(count('card_click') == 1)
 local used = count('use_card')
 UIElement.click({config = {button = 'use_card'}}); assert(count('use_card') == used + 1, 'consumables work again')
-assert(table.concat(buttons(guard.rewrite(menu())), ',') == 'options,mprpl_end',
+assert(table.concat(buttons(guard.rewrite(menu())), ',') == 'options,mprpl_end,mprpl_restart',
     'the replay still owns the pause menu: no Unstuck and no lobby exits')
 session.unlocked = false; guard.update()
 UIElement.click({config = {button = 'use_card'}}); assert(count('use_card') == used + 1, 'handing back locks the controls again')

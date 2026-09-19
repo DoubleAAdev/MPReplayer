@@ -252,7 +252,7 @@ return function(mod, JSON)
                         {n = G.UIT.C, config = {align = 'cm', button = 'mprpl_control', colour = speed_free and G.C.RED or G.C.ORANGE, r = 0.08,
                             minw = 1.87, minh = 0.36, hover = true, shadow = true, emboss = 0.04}, nodes = {
                             text(speed_free and 'Hand Back' or 'Take Over', 0.28)}}}}}}}},
-                config = {align = 'tm', offset = {x = 0.2, y = -1.2}, major = G.deck, bond = 'Weak'}}
+                config = {align = 'tm', offset = {x = 0.2, y = -0.85}, major = G.deck, bond = 'Weak'}}
         end
     end
 

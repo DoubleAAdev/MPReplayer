@@ -174,6 +174,10 @@ assert(session.phase == 'idle', 'first press after selecting is still a confirma
 G.OVERLAY_MENU = {}
 session.start()
 assert(session.phase == 'joining' and not G.OVERLAY_MENU)
+-- The approval is not spent by the start it was given for, so the end screen's
+-- Restart can start the same run again without asking the same question.
+assert(session.confirmed == session.runs[session.index] and session.confirmed_mods,
+    'the approval outlives the start it was given for')
 assert(MP.LOBBY.code == 'VILVX' and MP.LOBBY.connected and MP.LOBBY.is_host and MP.LOBBY.username == 'Me')
 assert(MP.LOBBY.host.username == 'Me' and MP.LOBBY.host.blind_col == 7 and MP.LOBBY.guest.username == 'Them' and MP.LOBBY.guest.blind_col == 2 and MP.LOBBY.blind_col == 7)
 local config = MP.LOBBY.config
