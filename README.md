@@ -13,7 +13,7 @@ Copy this repository into `%APPDATA%\Balatro\Mods\MPReplayer`, or run `./scripts
 
 ## Use
 
-1. Open **Mods > MP Replayer > Replays** and choose **Load Log** to pick a Lovely log (`%APPDATA%\Balatro\Mods\lovely\log`), or drop a `.log` file onto Balatro. A log can hold several games; **Next Replay** cycles through them.
+1. Open **Mods > MP Replayer > Replays** and choose **Load Log** to pick a Lovely log (`%APPDATA%\Balatro\Mods\lovely\log` on Windows; `~/Library/Application Support/Balatro/Mods/lovely/log` on macOS), or drop a `.log` file onto Balatro. A log can hold several games; **Next Replay** cycles through them.
 2. From the main menu, choose **Start Replay**. The game joins a copy of the recorded lobby with the recorded seed, deck, stake, ruleset and options, then executes the logged actions in order. Progress is shown in `%APPDATA%\Balatro\mp_replayer\status.json`.
 3. When the replay completes, choose **End Replay** from the pause menu. If Balatro Observer is installed, export the run from **Mods > Balatro Observer > Config > Open Action Recorder**.
 4. Ending the replay returns to the main menu and restores normal Multiplayer play.
