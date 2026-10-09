@@ -257,7 +257,7 @@ return function(mod, JSON)
             speed_box, speed_deck = nil, nil
         end
         if not show then
-            set_speed(default_speed)
+            if not session.retrying then set_speed(default_speed) end
             -- Only once nothing is running: a challenge hides the panel and
             -- keeps the controls, and must not have them taken back here.
             if session.phase == 'idle' then session.hold, session.unlocked = false, false end
@@ -323,6 +323,7 @@ return function(mod, JSON)
     local previous_start = Game.start_run
     if previous_start then
         function Game:start_run(...)
+            protect(session.before_run_started, true)
             local result = pack(previous_start(self, ...))
             protect(session.on_run_started, true)
             return unpack(result, 1, result.n)

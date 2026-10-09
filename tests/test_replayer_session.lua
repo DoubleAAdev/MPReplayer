@@ -1085,3 +1085,61 @@ MP.MOD_STRING = manifest.mod_hash
 assert(session.refresh_mods() and session.steamodded_warning, 'matching old builds still need warning')
 SMODS.version = old_runtime
 print('PASS: Steamodded 1620a boundary, newer versions, unknown versions and running-version precedence')
+
+-- Joker drags during score animation must not alter the evaluation itself.
+G.FUNCS.evaluate_play = function() return 'evaluated' end
+local _, retry_signature=session.refresh_mods()
+session.confirmed, session.confirmed_mods=session.runs[1],retry_signature
+local evaluating_run=session.runs[1]
+evaluating_run.entries={
+ {kind='action',op='play',args={'1'},text='play 1',seq=1,line=1},
+ {kind='action',op='reorder',args={'4','2.1'},text='reorder 4 2.1',seq=2,line=2}}
+evaluating_run.actions=2
+begin()
+G.play={cards={{}}}
+G.hand={cards={{}}}
+driver.state_name=function() return 'HAND_PLAYED' end
+local joker_drags=0
+driver.perform=function(e)
+ joker_drags=joker_drags+1
+ MP.RLOG.record('reorder',{4,{2,1}})
+ return 'done'
+end
+MP.RLOG.record('play',{ {1} })
+now=now+1; session.update(.1)
+assert(joker_drags==0, 'do not move Blueprint before this hand evaluates')
+assert(G.FUNCS.evaluate_play()=='evaluated')
+now=now+.1; session.update(.1)
+assert(joker_drags==1, 'a joker drag remains possible during the score animation')
+session.on_main_menu()
+
+-- A recoverable purchase ambiguity restarts via the normal menu/lobby path.
+BalatroActionRecorder.path=nil
+begin()
+local recovered=0
+local preserves={}
+driver.retry_purchase=function(message) recovered=recovered+1; return recovered==1 end
+driver.reset_purchases=function(preserve) preserves[#preserves+1]=preserve or false end
+session.recording=nil
+BalatroActionRecorder.path=nil
+session.fail('shop_jokers slot 1 holds Earth, log says Eris')
+assert(session.phase=='retrying' and MP.LOBBY.code==nil)
+G.STAGE=G.STAGES.MAIN_MENU
+session.on_main_menu()
+assert(session.phase=='idle' and session.retry_pending)
+session.update(.1)
+assert(session.phase=='joining' and preserves[#preserves]==true)
+local replay_back=MP.LOBBY.deck.back
+session.on_main_menu()
+MP.LOBBY.deck.back='wrong deck'
+MP.LOBBY.config.back='wrong deck'
+now=now+2
+session.update(.1)
+assert(MP.LOBBY.deck.back==replay_back and MP.LOBBY.config.back==replay_back,
+ 'late menu callbacks cannot change the deck used by the retry')
+G.GAME.viewed_back={key='wrong'}
+session.before_run_started()
+assert(G.GAME.viewed_back==G.P_CENTERS.b_red, 'pin the logged back at the actual queued run start')
+session.stop()
+session.on_main_menu()
+print('PASS: scoring-time joker drags preserve evaluation; ambiguous purchases restart with the alternative retained')

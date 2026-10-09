@@ -344,6 +344,18 @@ session.phase = 'idle'
 Game:update(0.016)
 assert(boxes[5].REMOVED and label.value == 1 and not session.hold and not session.unlocked and updates == 16,
     'the button leaves with the replay; speed, pause and the controls reset')
+G.FUNCS.mprpl_speed_down()
+G.FUNCS.mprpl_speed_down()
+assert(label.value==512)
+session.retrying=true
+session.phase='joining'
+G.STAGE=G.STAGES.MAIN_MENU
+Game:update(.016)
+assert(label.value==512, 'automatic recovery must preserve the selected replay speed')
+session.retrying=nil
+session.phase='idle'
+Game:update(.016)
+assert(label.value==1)
 session.update, G.STAGE, G.deck = real_update, G.STAGES.MAIN_MENU, nil
 print('PASS: fast forward arrows step and wrap between 0.5x and 512x, and each frame runs that many updates')
 
