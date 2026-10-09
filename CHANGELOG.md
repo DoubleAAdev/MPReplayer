@@ -1,3 +1,25 @@
+# MP Replayer 3.2.3
+
+- Resolve ambiguous consumable purchases using later named-card evidence. Multiplayer records Buy and Buy & Use identically; when a generated copy makes the initial inference inconsistent, retry playback with the alternative purchase mode. Each alternative is tried once, and no recorded action is skipped or card substituted. Automatic recovery is disabled during Take Over or an external action recording.
+- Apply scoring-time joker drags after hand evaluation, preserving the evaluated score while still moving the jokers during the animation.
+- Preserve the logged deck and lobby options through queued menu transitions and automatic restarts. Keep the selected replay speed during recovery.
+
+Validation: regression tests were written before execution; all 11 available Lua suites pass with Balatro's macOS LuaJIT. The Downloads replay completed all 417 actions in-game at 128x, including automatic purchase recovery, and reached the replay end screen. All 37 recorded PvP hand scores matched the log. Temporary diagnostics and automatic log loading were removed. The Windows-only picker suite was not run on macOS.
+
+# MP Replayer 3.2.2
+
+- Fix replay stops when a consumable or sale recorded in the shop follows the final PvP hand. Wait through the round-end transition, cash out, and reach the shop before issuing the action.
+- Preserve consumable uses recorded before Cash Out.
+
+Validation: wrote a regression test that reproduced the Eris refusal before the fix; it passes with the fix, along with the existing replay suites. In-game validation with the Downloads log passed the original action 109 stop and reached action 304, where a separate shop mismatch remains (Earth generated instead of the recorded Eris). Runtime UI source checks and the Windows-only picker are unavailable on this Mac.
+
+# MP Replayer 3.2.1
+
+- Fix Load Log on macOS with a native file picker. It starts in the Lovely log folder when available, supports Unicode filenames, and treats Cancel as a normal return.
+- Keep the existing native Windows picker and drag-and-drop loading.
+
+Validation: nine existing Lua suites and the new macOS picker suite passed with Balatro's LuaJIT; the runtime UI suite skipped its game-source checks because the local patched source is unavailable. macOS dialog script compiled successfully and native cancellation was verified. The Windows-only picker suite was not run on macOS.
+
 # MP Replayer 3.2.0
 
 - Challenge a replay instead of watching it. Every game in the Replays list has a Challenge button that drops you into the lobby the log was played in, on its deck, stake and seed, with the player from the log as your nemesis. You play the run yourself and they answer with what they actually scored.

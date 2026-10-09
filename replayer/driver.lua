@@ -9,6 +9,7 @@
 -- that message.
 return function(log)
     local M = {}
+    local purchase_choices, uncertain_purchases = {}, {}
     local areas = {'shop_jokers', 'shop_booster', 'shop_vouchers', 'jokers', 'consumeables', 'hand', 'pack_cards'}
     M.areas = areas
 
@@ -184,9 +185,39 @@ return function(log)
         if not has_buy_space(card) then return 'buy_and_use', 'no free consumable slot' end
         local key = ((card.config or {}).center or {}).key
         local duplicates = SMODS and SMODS.showman and key and SMODS.showman(key)
+        if purchase_choices[entry.position] then return purchase_choices[entry.position], 'resolved using later named-card evidence' end
         local mode, evidence = slot_rule(entries, entry.position, card_name(card), duplicates)
         if mode then return mode, evidence end
         return 'buy', 'no later use of its slot in the log'
+    end
+
+    -- A later use can refer to a generated copy, not the purchased card.
+    -- Retain only genuinely ambiguous buys; never override an unusable card,
+    -- a refused click, a full rack, or an explicitly inferred Buy & Use.
+    function M.remember_purchase(entry, card, entries)
+        local mode, evidence = M.purchase_mode(entry, card, entries)
+        if entry.position and mode == 'buy' and evidence:find('its slot is used at action ', 1, true)
+            and card.can_use_consumeable and card:can_use_consumeable() then
+            uncertain_purchases[#uncertain_purchases + 1] = {position = entry.position, name = card_name(card)}
+        end
+    end
+
+    function M.retry_purchase(message)
+        local name = tostring(message):match(', log says (.+)$')
+        if not name then return false end
+        for i = #uncertain_purchases, 1, -1 do
+            local candidate = uncertain_purchases[i]
+            if candidate.name == name and not purchase_choices[candidate.position] then
+                purchase_choices[candidate.position] = 'buy_and_use'
+                return true
+            end
+        end
+        return false
+    end
+
+    function M.reset_purchases(preserve)
+        uncertain_purchases = {}
+        if not preserve then purchase_choices = {} end
     end
 
     -- Walk a UIBox the way the game builds it: elements hang off UIRoot and
@@ -300,6 +331,7 @@ return function(log)
         if want.cost and card.cost ~= want.cost then
             error(card_name(card) .. ' costs $' .. tostring(card.cost) .. ', the log paid $' .. want.cost)
         end
+        M.remember_purchase(entry, card, entries)
         local mode, evidence = M.purchase_mode(entry, card, entries)
         M.note = card_name(card) .. ': ' .. mode .. ' (' .. evidence .. ')'
         local id = mode == 'buy_and_use' and 'buy_and_use' or 'buy'
@@ -312,7 +344,10 @@ return function(log)
     end
 
     handlers.sell = function(entry)
-        if entry.after_cash_out and state_is('ROUND_EVAL') then return leave_round_eval() end
+        if entry.after_cash_out and not state_is('SHOP') then
+            if state_is('ROUND_EVAL') then return leave_round_eval() end
+            return 'wait', 'waiting for the shop after round end'
+        end
         local area_name = areas[tonumber(entry.args[1])]
         if area_name ~= 'jokers' and area_name ~= 'consumeables' then error('sell from ' .. tostring(area_name) .. ' is not possible') end
         if area_name == 'consumeables' then rack_drag(tonumber(entry.args[2]), log.expectation(entry).name) end
@@ -328,9 +363,14 @@ return function(log)
     -- "use" names a slot but no area: consumables, shop packs and shop
     -- vouchers all go through use_card. The mirrored card name settles it.
     handlers.use = function(entry)
+        -- A shop action can arrive while the final hand is still transitioning
+        -- through NEW_ROUND, before ROUND_EVAL and its Cash Out button exist.
         -- Cards can be used on the round results too; the Hermit doubles
         -- different money before and after the cash out.
-        if entry.after_cash_out and state_is('ROUND_EVAL') then return leave_round_eval() end
+        if entry.after_cash_out and not state_is('SHOP') then
+            if state_is('ROUND_EVAL') then return leave_round_eval() end
+            return 'wait', 'waiting for the shop after round end'
+        end
         local slot = tonumber(entry.args[1])
         local name = log.expectation(entry).name
         if not name then error('the log does not name the card used at slot ' .. slot) end

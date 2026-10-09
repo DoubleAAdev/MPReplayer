@@ -2,8 +2,10 @@
 -- the log's actions are executed in order, and the opponent's messages are
 -- handed back to Multiplayer where the log has them.
 --
--- Only the log's actions are executed, each exactly once and in log order.
--- Nothing is skipped, repeated, reordered or added, and nothing is decided
+-- Each playback attempt executes the log's actions once, in log order.
+-- An ambiguous Buy may be retried from the start using later named-card
+-- evidence: Multiplayer logs Buy and Buy & Use identically.
+-- Nothing is skipped, reordered or added, and nothing is decided
 -- by comparing scores or money: an action the game cannot perform, or a line
 -- the game writes that is not the action just performed, stops the replay
 -- at that action and says why. The recording is then the log up to there.
@@ -91,6 +93,13 @@ return function(log, driver, JSON, deps)
 
     local function fail(message)
         if not session or session.failure then return end
+        if not checkpoint and not S.unlocked and not session.recording
+            and driver.retry_purchase and driver.retry_purchase(clean(message)) then
+            S.retrying, S.phase = true, 'retrying'
+            S.status('Rechecking Buy versus Buy & Use from the start: ' .. clean(message))
+            MP.LOBBY.code = nil
+            return
+        end
         S.takeover = nil
         local entry = session.entries[session.cursor]
         local where = entry and entry.kind == 'action' and (' at action ' .. entry.seq .. ' (' .. entry.text .. ')') or ''
@@ -503,8 +512,9 @@ return function(log, driver, JSON, deps)
         -- same mods loaded is the confirmed thing happening again. A fresh
         -- Start clears it before it gets here, and so does changing the
         -- selection, so neither reuses it.
+        if driver.reset_purchases then driver.reset_purchases(S.retrying) end
         classify(run.entries)
-        saved = {send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
+        saved = {evaluate_play = G.FUNCS.evaluate_play, send = Client.send, record = MP.RLOG.record, record_match = MP.STATS and MP.STATS.record_match,
             modifiers = MP.MODIFIERS, sp = {}, lobby = {}}
         for k, v in pairs(MP.SP or {}) do saved.sp[k] = v end
         for _, field in ipairs({'code', 'connected', 'is_host', 'username', 'blind_col', 'host', 'guest', 'config', 'deck', 'type'}) do
@@ -545,6 +555,13 @@ return function(log, driver, JSON, deps)
             end
             if type(msg) == 'table' and allowed_sends[msg.action] then return saved.send(msg) end
         end
+        if saved.evaluate_play then
+            G.FUNCS.evaluate_play = function(...)
+                local results = {saved.evaluate_play(...)}
+                if session and session.hand_pending then session.hand_pending.evaluated = true end
+                return unpack(results)
+            end
+        end
         MP.RLOG.record = S.record
         if MP.STATS then MP.STATS.record_match = function() end end
         -- Steamodded sends every log line through this one function, and
@@ -562,7 +579,8 @@ return function(log, driver, JSON, deps)
                 if logger ~= 'MULTIPLAYER' then return saved.console(level, logger, message) end
             end
         end
-        session = {run = run, entries = run.entries, cursor = 1, done = 0, key = key, began = clock(), tick = 0}
+        session = {run = run, entries = run.entries, cursor = 1, done = 0, key = key, began = clock(), tick = 0,
+            lobby_config = copy_state(config), lobby_deck = copy_state(MP.LOBBY.deck)}
         -- Every PvP blind the log holds, in order, with the side that plays as
         -- the nemesis: the opponent in a replay the player takes over, and the
         -- log's own player in a challenge, which is who the challenger faces.
@@ -616,6 +634,7 @@ return function(log, driver, JSON, deps)
         checkpoint = nil
         S.unlocked, S.takeover, S.returning, S.restoring = false, nil, nil, nil
         print, MP.RLOG.end_run = saved.print, saved.end_run
+        G.FUNCS.evaluate_play = saved.evaluate_play
         Client.send = saved.send
         MP.RLOG.record = saved.record
         if MP.STATS then MP.STATS.record_match = saved.record_match end
@@ -640,7 +659,7 @@ return function(log, driver, JSON, deps)
 
     function S.stop()
         if S.phase == 'idle' then return end
-        S.takeover, S.returning, S.restoring = nil, nil, nil
+        S.takeover, S.returning, S.restoring, S.retrying, S.retry_pending = nil, nil, nil, nil, nil
         S.phase = 'stopped'
         S.status('Replay stopped by the player - ' .. (session and progress() or ''))
         if G.STAGE == G.STAGES.RUN then
@@ -659,11 +678,21 @@ return function(log, driver, JSON, deps)
         if not session then return end
         if S.phase == 'joining' then
             session.rejoined = session.rejoined or clock()
-        elseif S.phase == 'running' or S.phase == 'finished' or S.phase == 'failed' or S.phase == 'stopped' then
+        elseif S.phase == 'running' or S.phase == 'finished' or S.phase == 'failed' or S.phase == 'stopped' or S.phase == 'retrying' then
+            local retrying = S.retrying
             cleanup()
             S.phase = 'idle'
             S.status('Replayer: returned to the menu (' .. progress() .. ' actions)')
             session = nil
+            if retrying then S.retry_pending = true end
+        end
+    end
+
+    -- The start callback is queued behind the menu's own deck callbacks.
+    -- Pin the manifest's back at the actual start, including automatic retries.
+    function S.before_run_started()
+        if session and S.phase == 'starting' and not S.restoring then
+            G.GAME.viewed_back = assert(G.P_CENTERS[session.key], 'The recorded deck is unavailable')
         end
     end
 
@@ -680,7 +709,7 @@ return function(log, driver, JSON, deps)
         if deck ~= session.key then return fail('the run started with deck ' .. tostring(deck) .. ', the log has ' .. session.key) end
         local rec = recorder()
         session.recording = rec and rec.ok and rec.path or nil
-        S.phase = 'running'
+        S.phase, S.retrying = 'running', nil
         session.signature, session.signature_at = nil, nil
         if S.challenge then
             -- A live game is handed its lives by the server, in playerInfo. A
@@ -938,6 +967,11 @@ return function(log, driver, JSON, deps)
     end
 
     function S.update(dt)
+        if S.retry_pending and G.STAGE == G.STAGES.MAIN_MENU and not G.OVERLAY_MENU then
+            S.retry_pending = nil
+            S.start()
+            return
+        end
         if not session then return end
         local now = clock()
         if S.returning then
@@ -977,6 +1011,11 @@ return function(log, driver, JSON, deps)
                 -- G.TAROT_INTERRUPT set, and the run start then builds card areas
                 -- with it still on. A fresh run never has a use in progress.
                 G.TAROT_INTERRUPT = nil
+                -- Menu transitions can finish their deck-selection callbacks
+                -- after joining. Reapply the manifest immediately before start.
+                MP.LOBBY.config = copy_state(session.lobby_config)
+                MP.LOBBY.deck = copy_state(session.lobby_deck)
+                MP.modifiers_parse(MP.LOBBY.config.modifier_layers)
                 deliver({action = 'startGame', fields = {action = 'startGame', seed = session.run.manifest.seed, stake = session.run.manifest.stake}, line = session.run.line})
                 S.status('Replay starting run ' .. session.run.manifest.seed)
             elseif now - session.rejoined > STALL then
@@ -1025,7 +1064,8 @@ return function(log, driver, JSON, deps)
                 local next_entry = session.entries[session.cursor]
                 if next_entry and next_entry.op == 'reorder' and not session.issued
                     and session.hand_pending.op == 'play' and state == 'HAND_PLAYED'
-                    and G.play and G.play.cards and #G.play.cards >= session.hand_pending.cards then
+                    and G.play and G.play.cards and #G.play.cards >= session.hand_pending.cards
+                    and (next_entry.args[1] ~= '4' or session.hand_pending.evaluated) then
                     local cursor = session.cursor
                     local ok, result = pcall(driver.perform, next_entry, session.entries)
                     if ok and result == 'done' and session.cursor == cursor and not session.failure then session.issued = now end

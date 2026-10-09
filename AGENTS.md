@@ -10,3 +10,7 @@ The user explicitly requires GitHub synchronization whenever a change is complet
 # Versioning
 
 The user authorizes version increments as needed: patch (x.y.Z) for non-major changes and minor (x.Y.0) for major changes. This replaces the earlier temporary instruction to keep 2.8.0 unchanged.
+
+# Tests
+
+- Write and save new tests before running them.
