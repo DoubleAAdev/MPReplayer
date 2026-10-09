@@ -1,6 +1,6 @@
-# MP Replayer 3.2.1
+# MP Replayer 3.2.2
 
-- Fix Load Log on macOS with a native file picker. It starts in the Lovely log folder when available, supports Unicode filenames, and treats Cancel as a normal return.
-- Keep the existing native Windows picker and drag-and-drop loading.
+- Fix replay stops when a consumable or sale recorded in the shop follows the final PvP hand. Wait through the round-end transition, cash out, and reach the shop before issuing the action.
+- Preserve consumable uses recorded before Cash Out.
 
-Validation: nine existing Lua suites and the new macOS picker suite passed with Balatro's LuaJIT; the runtime UI suite skipped its game-source checks because the local patched source is unavailable. macOS dialog script compiled successfully and native cancellation was verified. The Windows-only picker suite was not run on macOS.
+Validation: wrote a regression test that reproduced the Eris refusal before the fix; it passes with the fix, along with the existing replay suites. Runtime UI source checks and the Windows-only picker are unavailable on this Mac.
