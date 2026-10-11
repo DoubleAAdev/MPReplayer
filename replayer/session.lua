@@ -745,11 +745,13 @@ return function(log, driver, JSON, deps)
         return nil
     end
 
+    -- Failed replays still own the input guard and show Take Over. Allow the
+    -- player to explore their stopped state through the same checkpoint.
     function S.control()
         if S.restoring or S.returning or S.phase == 'stopped' or S.phase == 'idle' then return end
         if checkpoint then
             S.unlocked, S.returning = false, true
-        elseif S.phase == 'running' then
+        elseif S.phase == 'running' or S.phase == 'failed' then
             S.takeover = not S.takeover
         end
     end
@@ -780,7 +782,7 @@ return function(log, driver, JSON, deps)
         game.STATE = state
         local replay = {}
         for key, value in pairs(session) do replay[key] = value end
-        checkpoint = {game = game, multiplayer = copy_state(MP.GAME), replay = replay,
+        checkpoint = {phase = S.phase, game = game, multiplayer = copy_state(MP.GAME), replay = replay,
             random = love.math.getRandomState(), hold = S.hold, text = S.text,
             after_pvp = G.after_pvp, pack = pack, booster = booster_obj,
             blind_pvp = G.GAME.blind and G.GAME.blind.pvp,
@@ -839,7 +841,7 @@ return function(log, driver, JSON, deps)
         if G.GAME.blind then G.GAME.blind.pvp = checkpoint.blind_pvp end
         session = {}
         for key, value in pairs(checkpoint.replay) do session[key] = value end
-        S.phase, S.hold = 'running', checkpoint.hold
+        S.phase, S.hold = checkpoint.phase or 'running', checkpoint.hold
         session.signature, session.signature_at, session.waiting_since = nil, nil, nil
         session.consumed, session.delivered, session.tick = clock(), clock(), clock()
     end
@@ -1027,7 +1029,7 @@ return function(log, driver, JSON, deps)
             if now - session.started_at > STALL then fail('the run did not start') end
             return
         end
-        if S.phase ~= 'running' then return end
+        if S.phase ~= 'running' and not (S.phase == 'failed' and (S.takeover or S.unlocked)) then return end
         if MP.LOBBY.code ~= session.code then MP.LOBBY.code = session.code end
         if G.STAGE ~= G.STAGES.RUN then
             S.phase = 'stopped'
@@ -1044,7 +1046,7 @@ return function(log, driver, JSON, deps)
         -- RLOG acknowledges the input before scoring/discard animations and their
         -- triggered effects finish. Do not deliver round-ending messages or issue
         -- another input while that hand operation is still resolving.
-        if session.hand_pending then
+        if session.hand_pending and S.phase == 'running' then
             if paused() then session.hand_pending.began = now; return end
             local state = driver.state_name()
             local waiting_for_opponent = state == 'HAND_PLAYED' and session.hand_pending.score_reported
@@ -1087,6 +1089,7 @@ return function(log, driver, JSON, deps)
             take_over()
             return
         end
+        if S.phase == 'failed' then return end
         local entry = session.entries[session.cursor]
         if not entry then return finish() end
         if entry.kind == 'message' then
