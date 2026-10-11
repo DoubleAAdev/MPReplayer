@@ -1047,6 +1047,31 @@ MP.is_pvp_boss = nil
 session.runs[1].entries, session.runs[1].pvp = original_entries, original_pvp
 print('PASS: later PvP takeover selects the current opponent record and rollback restores that selection')
 
+-- A stopped pack still exposes Take Over: save its checkpoint and keep the
+-- failure when handing it back, without issuing the blocked action again.
+begin()
+G.STATE, G.STATE_COMPLETE = G.STATES.SMODS_BOOSTER_OPENED, true
+G.GAME.PACK_INTERRUPT, G.GAME.pack_choices = G.STATES.SHOP, 1
+G.GAME.pseudorandom = {seed = 'TESTSEED'}
+G.hand = {cards = {{id = 'AS'}}}
+G.pack_cards = {cards = {{id = 'Hermit'}}}
+SMODS.OPENED_BOOSTER = {ability = {extra = 1}}
+session.fail('pack selection refused')
+local failed_cursor = session.debug_snapshot().cursor
+session.control()
+assert(session.takeover, 'Take Over must remain available after a replay failure')
+now = now + 1; session.update(.1)
+assert(session.unlocked and not session.takeover, 'failed pack must unlock after settling')
+G.pack_cards.cards[1].id = 'Moon'
+session.control(); now = now + 1; session.update(.1)
+now = now + 1; session.update(.1)
+assert(session.phase == 'failed' and not session.unlocked, 'Hand Back must restore the stopped replay')
+assert(G.pack_cards.cards[1].id == 'Hermit')
+assert(session.debug_snapshot().cursor == failed_cursor)
+assert(session.debug_snapshot().failure.message == 'pack selection refused')
+session.on_main_menu()
+print('PASS: failed arcana pack takeover and checkpoint return')
+
 begin()
 G.STATE = G.STATES.SHOP
 save_run = function() error('save failed') end

@@ -329,3 +329,14 @@ assert(driver.signature() ~= before)
 G.shop_jokers.cards = nil
 assert(driver.signature():find('%-'), 'a removed area reads as absent, not as an error')
 print('PASS: selections, transitions, named-card checks, purchase modes, use resolution, packs, sells, rerolls, reorders, blind buttons and readiness')
+
+-- The Star can make both sort buttons produce exactly the same permutation.
+-- That is no evidence to change how a later mixed-suit draw gets sorted.
+for _, method in ipairs({'desc', 'suit desc'}) do
+    G.hand = area({playing('2','Diamonds'),playing('Ace','Diamonds'),playing('3','Diamonds'),playing('7','Diamonds')})
+    G.hand.config.sort = method
+    assert(driver.perform(entry('reorder', {'6','2.4.3.1'})) == 'done')
+    assert(G.hand.sorted == method, 'the permutation must exercise sort-button detection')
+    assert(G.hand.config.sort == method, 'an ambiguous sort must preserve the current draw sorting mode')
+end
+print('PASS: same-suit sort ambiguity preserves rank or suit sorting for later draws')

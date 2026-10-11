@@ -474,7 +474,12 @@ return function(log)
         -- The hand's sort buttons leave the same permutation as a drag would,
         -- but they also change how every later draw is sorted.
         if area == G.hand and not single_move(order) and list[1] and list[1].get_nominal then
-            for _, method in ipairs({'suit desc', 'desc'}) do
+            -- After a suit-changing Tarot, both buttons can produce the same
+            -- permutation. Preserve the current mode when it fits: switching
+            -- it would change future draws even though this hand looks right.
+            local current = (area.config or {}).sort
+            local preferred = current == 'suit desc' and current or 'desc'
+            for _, method in ipairs({preferred, 'desc', 'suit desc'}) do
                 if same_order(after, sorted_like(list, method)) then
                     area:sort(method)
                     return 'done'
